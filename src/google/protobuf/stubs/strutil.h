@@ -356,14 +356,14 @@ PROTOBUF_EXPORT uint32 strtou32_adaptor(const char* nptr, char** endptr,
                                         int base);
 
 inline int32 strto32(const char *nptr, char **endptr, int base) {
-  if (sizeof(int32) == sizeof(long))
+  if constexpr (sizeof(int32) == sizeof(long))
     return strtol(nptr, endptr, base);
   else
     return strto32_adaptor(nptr, endptr, base);
 }
 
 inline uint32 strtou32(const char *nptr, char **endptr, int base) {
-  if (sizeof(uint32) == sizeof(unsigned long))
+  if constexpr (sizeof(uint32) == sizeof(unsigned long))
     return strtoul(nptr, endptr, base);
   else
     return strtou32_adaptor(nptr, endptr, base);
