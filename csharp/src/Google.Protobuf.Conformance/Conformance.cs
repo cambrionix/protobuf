@@ -343,7 +343,9 @@ namespace Conformance {
       while ((tag = input.ReadTag()) != 0) {
         switch(tag) {
           default:
-            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            if (!pb::UnknownFieldSet.MergeFieldFrom(ref _unknownFields, input)) {
+              return;
+            }
             break;
           case 10: {
             ProtobufPayload = input.ReadBytes();
@@ -354,7 +356,7 @@ namespace Conformance {
             break;
           }
           case 24: {
-            requestedOutputFormat_ = (global::Conformance.WireFormat) input.ReadEnum();
+            RequestedOutputFormat = (global::Conformance.WireFormat) input.ReadEnum();
             break;
           }
           case 34: {
@@ -362,7 +364,7 @@ namespace Conformance {
             break;
           }
           case 40: {
-            testCategory_ = (global::Conformance.TestCategory) input.ReadEnum();
+            TestCategory = (global::Conformance.TestCategory) input.ReadEnum();
             break;
           }
         }
@@ -683,7 +685,9 @@ namespace Conformance {
       while ((tag = input.ReadTag()) != 0) {
         switch(tag) {
           default:
-            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            if (!pb::UnknownFieldSet.MergeFieldFrom(ref _unknownFields, input)) {
+              return;
+            }
             break;
           case 10: {
             ParseError = input.ReadString();

@@ -13,10 +13,6 @@
 #include <google/protobuf/generated_message_reflection.h>
 #include <google/protobuf/reflection_ops.h>
 #include <google/protobuf/wire_format.h>
-// This is a temporary google only hack
-#ifdef GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS
-#include "third_party/protobuf/version.h"
-#endif
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
@@ -75,7 +71,7 @@ static void InitDefaultsListValue_google_2fprotobuf_2fstruct_2eproto() {
   ::google::protobuf::ListValue::InitAsDefaultInstance();
 }
 
-LIBPROTOBUF_EXPORT ::google::protobuf::internal::SCCInfo<0> scc_info_ListValue_google_2fprotobuf_2fstruct_2eproto =
+PROTOBUF_EXPORT ::google::protobuf::internal::SCCInfo<0> scc_info_ListValue_google_2fprotobuf_2fstruct_2eproto =
     {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 0, InitDefaultsListValue_google_2fprotobuf_2fstruct_2eproto}, {}};
 
 void InitDefaults_google_2fprotobuf_2fstruct_2eproto() {
@@ -86,26 +82,26 @@ void InitDefaults_google_2fprotobuf_2fstruct_2eproto() {
 const ::google::protobuf::EnumDescriptor* file_level_enum_descriptors_google_2fprotobuf_2fstruct_2eproto[1];
 constexpr ::google::protobuf::ServiceDescriptor const** file_level_service_descriptors_google_2fprotobuf_2fstruct_2eproto = nullptr;
 
-const ::google::protobuf::uint32 TableStruct_google_2fprotobuf_2fstruct_2eproto::offsets[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, _internal_metadata_),
+const ::google::protobuf::uint32 TableStruct_google_2fprotobuf_2fstruct_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, _has_bits_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, key_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, value_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, key_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct_FieldsEntry_DoNotUse, value_),
   0,
   1,
   ~0u,  // no _has_bits_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Struct, fields_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Struct, fields_),
   ~0u,  // no _has_bits_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Value, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Value, _internal_metadata_),
   ~0u,  // no _extensions_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Value, _oneof_case_[0]),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Value, _oneof_case_[0]),
   ~0u,  // no _weak_field_map_
   offsetof(::google::protobuf::ValueDefaultTypeInternal, null_value_),
   offsetof(::google::protobuf::ValueDefaultTypeInternal, number_value_),
@@ -113,15 +109,15 @@ const ::google::protobuf::uint32 TableStruct_google_2fprotobuf_2fstruct_2eproto:
   offsetof(::google::protobuf::ValueDefaultTypeInternal, bool_value_),
   offsetof(::google::protobuf::ValueDefaultTypeInternal, struct_value_),
   offsetof(::google::protobuf::ValueDefaultTypeInternal, list_value_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::Value, kind_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::Value, kind_),
   ~0u,  // no _has_bits_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::ListValue, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::ListValue, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::ListValue, values_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::ListValue, values_),
 };
-static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
+static const ::google::protobuf::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, 7, sizeof(::google::protobuf::Struct_FieldsEntry_DoNotUse)},
   { 9, -1, sizeof(::google::protobuf::Struct)},
   { 15, -1, sizeof(::google::protobuf::Value)},
@@ -141,8 +137,7 @@ static ::google::protobuf::Message const * const file_default_instances[] = {
   file_level_metadata_google_2fprotobuf_2fstruct_2eproto, 4, file_level_enum_descriptors_google_2fprotobuf_2fstruct_2eproto, file_level_service_descriptors_google_2fprotobuf_2fstruct_2eproto,
 };
 
-::google::protobuf::internal::DescriptorTable descriptor_table_google_2fprotobuf_2fstruct_2eproto = {
-  false, InitDefaults_google_2fprotobuf_2fstruct_2eproto, 
+const char descriptor_table_protodef_google_2fprotobuf_2fstruct_2eproto[] =
   "\n\034google/protobuf/struct.proto\022\017google.p"
   "rotobuf\"\204\001\n\006Struct\0223\n\006fields\030\001 \003(\0132#.goo"
   "gle.protobuf.Struct.FieldsEntry\032E\n\013Field"
@@ -160,7 +155,10 @@ static ::google::protobuf::Message const * const file_default_instances[] = {
   "protobuf/ptypes/struct;structpb\370\001\001\242\002\003GPB"
   "\252\002\036Google.Protobuf.WellKnownTypesb\006proto"
   "3"
-,
+  ;
+::google::protobuf::internal::DescriptorTable descriptor_table_google_2fprotobuf_2fstruct_2eproto = {
+  false, InitDefaults_google_2fprotobuf_2fstruct_2eproto, 
+  descriptor_table_protodef_google_2fprotobuf_2fstruct_2eproto,
   "google/protobuf/struct.proto", &assign_descriptors_table_google_2fprotobuf_2fstruct_2eproto, 641,
 };
 
@@ -207,7 +205,22 @@ void Struct_FieldsEntry_DoNotUse::MergeFrom(
 }
 
 #if GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
-const char* Struct_FieldsEntry_DoNotUse::_InternalParse(const char* begin, const char* end, void* object, ::google::protobuf::internal::ParseContext* ctx) { return end; }
+bool Struct_FieldsEntry_DoNotUse::_ParseMap(const char* begin, const char* end, void* object, ::google::protobuf::internal::ParseContext* ctx) {
+  using MF = ::google::protobuf::internal::MapField<
+      Struct_FieldsEntry_DoNotUse, EntryKeyType, EntryValueType,
+      kEntryKeyFieldType, kEntryValueFieldType,
+      kEntryDefaultEnumValue>;
+  auto mf = static_cast<MF*>(object);
+  Parser<MF, ::google::protobuf::Map<EntryKeyType, EntryValueType>> parser(mf);
+#define DO_(x) if (!(x)) return false
+  DO_(parser.ParseMap(begin, end));
+  DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+    parser.key().data(), static_cast<int>(parser.key().length()),
+    ::google::protobuf::internal::WireFormatLite::PARSE,
+    "google.protobuf.Struct.FieldsEntry.key"));
+#undef DO_
+  return true;
+}
 #endif  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 
 
@@ -224,7 +237,7 @@ const int Struct::kFieldsFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 Struct::Struct()
-  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+  : ::google::protobuf::Message(), _internal_metadata_(nullptr) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:google.protobuf.Struct)
 }
@@ -238,7 +251,7 @@ Struct::Struct(::google::protobuf::Arena* arena)
 }
 Struct::Struct(const Struct& from)
   : ::google::protobuf::Message(),
-      _internal_metadata_(NULL) {
+      _internal_metadata_(nullptr) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   fields_.MergeFrom(from.fields_);
   // @@protoc_insertion_point(copy_constructor:google.protobuf.Struct)
@@ -255,7 +268,7 @@ Struct::~Struct() {
 }
 
 void Struct::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaNoVirtual() == NULL);
+  GOOGLE_DCHECK(GetArenaNoVirtual() == nullptr);
 }
 
 void Struct::ArenaDtor(void* object) {
@@ -289,58 +302,59 @@ const char* Struct::_InternalParse(const char* begin, const char* end, void* obj
   auto msg = static_cast<Struct*>(object);
   ::google::protobuf::uint32 size; (void)size;
   int depth; (void)depth;
+  ::google::protobuf::uint32 tag;
   ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
   auto ptr = begin;
   while (ptr < end) {
-    ::google::protobuf::uint32 tag;
     ptr = Varint::Parse32Inline(ptr, &tag);
-    if (!ptr) goto error;
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     switch (tag >> 3) {
-      case 0: goto error;
       // map<string, .google.protobuf.Value> fields = 1;
       case 1: {
         if (static_cast<::google::protobuf::uint8>(tag) != 10) goto handle_unusual;
         do {
           ptr = Varint::Parse32Inline(ptr, &size);
-          if (!ptr) goto error;
-          parser_till_end = ::google::protobuf::Struct_FieldsEntry_DoNotUse::_InternalParse;
-          object = msg->mutable_fields();
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+          parser_till_end = ::google::protobuf::internal::SlowMapEntryParser;
+          auto parse_map = ::google::protobuf::Struct_FieldsEntry_DoNotUse::_ParseMap;
+          ctx->extra_parse_data().payload.clear();
+          ctx->extra_parse_data().parse_map = parse_map;
+          object = &msg->fields_;
           if (size > end - ptr) goto len_delim_till_end;
           auto newend = ptr + size;
-          if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
+          GOOGLE_PROTOBUF_PARSER_ASSERT(parse_map(ptr, newend, object, ctx));
           ptr = newend;
           if (ptr >= end) break;
-        } while((*reinterpret_cast<const ::google::protobuf::uint64*>(ptr) & 255) == 10 && (ptr += 1));
+        } while ((::google::protobuf::io::UnalignedLoad<::google::protobuf::uint64>(ptr) & 255) == 10 && (ptr += 1));
         break;
       }
       default: {
       handle_unusual: (void)&&handle_unusual;
-        if ((tag & 7) == 4) {
-          if (!ctx->ValidEndGroup(tag)) goto error;
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->EndGroup(tag);
           return ptr;
         }
         auto res = UnknownFieldParse(tag, {_InternalParse, msg},
           ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
         ptr = res.first;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
         if (res.second) return ptr;
       }
     }  // switch
   }  // while
   return ptr;
-error:
-  return nullptr;
 len_delim_till_end: (void)&&len_delim_till_end;
   return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg},
                                  {parser_till_end, object}, size);
 group_continues: (void)&&group_continues;
   GOOGLE_DCHECK(ptr >= end);
-  ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth);
+  GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth, tag));
   return ptr;
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool Struct::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
-#define DO_(EXPRESSION) if (!GOOGLE_PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
+#define DO_(EXPRESSION) if (!PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
   // @@protoc_insertion_point(parse_start:google.protobuf.Struct)
   for (;;) {
@@ -428,7 +442,7 @@ void Struct::SerializeWithCachedSizes(
       for (size_type i = 0; i < n; i++) {
         entry.reset(fields_.NewEntryWrapper(items[static_cast<ptrdiff_t>(i)]->first, items[static_cast<ptrdiff_t>(i)]->second));
         ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(1, *entry, output);
-        if (entry->GetArena() != NULL) {
+        if (entry->GetArena() != nullptr) {
           entry.release();
         }
         Utf8Check::Check(&(*items[static_cast<ptrdiff_t>(i)]));
@@ -440,7 +454,7 @@ void Struct::SerializeWithCachedSizes(
           it != this->fields().end(); ++it) {
         entry.reset(fields_.NewEntryWrapper(it->first, it->second));
         ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(1, *entry, output);
-        if (entry->GetArena() != NULL) {
+        if (entry->GetArena() != nullptr) {
           entry.release();
         }
         Utf8Check::Check(&(*it));
@@ -493,7 +507,7 @@ void Struct::SerializeWithCachedSizes(
       for (size_type i = 0; i < n; i++) {
         entry.reset(fields_.NewEntryWrapper(items[static_cast<ptrdiff_t>(i)]->first, items[static_cast<ptrdiff_t>(i)]->second));
         target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessageNoVirtualToArray(1, *entry, deterministic, target);
-        if (entry->GetArena() != NULL) {
+        if (entry->GetArena() != nullptr) {
           entry.release();
         }
         Utf8Check::Check(&(*items[static_cast<ptrdiff_t>(i)]));
@@ -505,7 +519,7 @@ void Struct::SerializeWithCachedSizes(
           it != this->fields().end(); ++it) {
         entry.reset(fields_.NewEntryWrapper(it->first, it->second));
         target = ::google::protobuf::internal::WireFormatLite::InternalWriteMessageNoVirtualToArray(1, *entry, deterministic, target);
-        if (entry->GetArena() != NULL) {
+        if (entry->GetArena() != nullptr) {
           entry.release();
         }
         Utf8Check::Check(&(*it));
@@ -542,14 +556,14 @@ size_t Struct::ByteSizeLong() const {
     for (::google::protobuf::Map< ::std::string, ::google::protobuf::Value >::const_iterator
         it = this->fields().begin();
         it != this->fields().end(); ++it) {
-      if (entry.get() != NULL && entry->GetArena() != NULL) {
+      if (entry.get() != nullptr && entry->GetArena() != nullptr) {
         entry.release();
       }
       entry.reset(fields_.NewEntryWrapper(it->first, it->second));
       total_size += ::google::protobuf::internal::WireFormatLite::
           MessageSizeNoVirtual(*entry);
     }
-    if (entry.get() != NULL && entry->GetArena() != NULL) {
+    if (entry.get() != nullptr && entry->GetArena() != nullptr) {
       entry.release();
     }
   }
@@ -565,7 +579,7 @@ void Struct::MergeFrom(const ::google::protobuf::Message& from) {
   const Struct* source =
       ::google::protobuf::DynamicCastToGenerated<Struct>(
           &from);
-  if (source == NULL) {
+  if (source == nullptr) {
   // @@protoc_insertion_point(generalized_merge_from_cast_fail:google.protobuf.Struct)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -611,7 +625,7 @@ void Struct::Swap(Struct* other) {
     temp->MergeFrom(*other);
     other->CopyFrom(*this);
     InternalSwap(temp);
-    if (GetArenaNoVirtual() == NULL) {
+    if (GetArenaNoVirtual() == nullptr) {
       delete temp;
     }
   }
@@ -700,7 +714,7 @@ const int Value::kListValueFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 Value::Value()
-  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+  : ::google::protobuf::Message(), _internal_metadata_(nullptr) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:google.protobuf.Value)
 }
@@ -713,7 +727,7 @@ Value::Value(::google::protobuf::Arena* arena)
 }
 Value::Value(const Value& from)
   : ::google::protobuf::Message(),
-      _internal_metadata_(NULL) {
+      _internal_metadata_(nullptr) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   clear_has_kind();
   switch (from.kind_case()) {
@@ -760,7 +774,7 @@ Value::~Value() {
 }
 
 void Value::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaNoVirtual() == NULL);
+  GOOGLE_DCHECK(GetArenaNoVirtual() == nullptr);
   if (has_kind()) {
     clear_kind();
   }
@@ -802,13 +816,13 @@ void Value::clear_kind() {
       break;
     }
     case kStructValue: {
-      if (GetArenaNoVirtual() == NULL) {
+      if (GetArenaNoVirtual() == nullptr) {
         delete kind_.struct_value_;
       }
       break;
     }
     case kListValue: {
-      if (GetArenaNoVirtual() == NULL) {
+      if (GetArenaNoVirtual() == nullptr) {
         delete kind_.list_value_;
       }
       break;
@@ -837,20 +851,19 @@ const char* Value::_InternalParse(const char* begin, const char* end, void* obje
   auto msg = static_cast<Value*>(object);
   ::google::protobuf::uint32 size; (void)size;
   int depth; (void)depth;
+  ::google::protobuf::uint32 tag;
   ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
   auto ptr = begin;
   while (ptr < end) {
-    ::google::protobuf::uint32 tag;
     ptr = Varint::Parse32Inline(ptr, &tag);
-    if (!ptr) goto error;
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     switch (tag >> 3) {
-      case 0: goto error;
       // .google.protobuf.NullValue null_value = 1;
       case 1: {
         if (static_cast<::google::protobuf::uint8>(tag) != 8) goto handle_unusual;
         ::google::protobuf::uint64 val;
         ptr = Varint::Parse64(ptr, &val);
-        if (!ptr) goto error;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         ::google::protobuf::NullValue value = static_cast<::google::protobuf::NullValue>(val);
         msg->set_null_value(value);
         break;
@@ -868,16 +881,19 @@ const char* Value::_InternalParse(const char* begin, const char* end, void* obje
       case 3: {
         if (static_cast<::google::protobuf::uint8>(tag) != 26) goto handle_unusual;
         ptr = Varint::Parse32Inline(ptr, &size);
-        if (!ptr) goto error;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         ctx->extra_parse_data().SetFieldName("google.protobuf.Value.string_value");
-        parser_till_end = ::google::protobuf::internal::StringParserUTF8;
-        ::std::string* str = msg->mutable_string_value();
-        str->clear();
-        object = str;
-        if (size > end - ptr) goto len_delim_till_end;
-        auto newend = ptr + size;
-        if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
-        ptr = newend;
+        auto str = msg->mutable_string_value();
+        if (size > end - ptr + ::google::protobuf::internal::ParseContext::kSlopBytes) {
+          object = str;
+          str->clear();
+          str->reserve(size);
+          parser_till_end = ::google::protobuf::internal::GreedyStringParserUTF8;
+          goto len_delim_till_end;
+        }
+        GOOGLE_PROTOBUF_PARSER_ASSERT(::google::protobuf::internal::StringCheckUTF8(ptr, size, ctx));
+        ::google::protobuf::internal::InlineGreedyStringParser(str, ptr, size, ctx);
+        ptr += size;
         break;
       }
       // bool bool_value = 4;
@@ -885,7 +901,7 @@ const char* Value::_InternalParse(const char* begin, const char* end, void* obje
         if (static_cast<::google::protobuf::uint8>(tag) != 32) goto handle_unusual;
         ::google::protobuf::uint64 val;
         ptr = Varint::Parse64(ptr, &val);
-        if (!ptr) goto error;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         bool value = val;
         msg->set_bool_value(value);
         break;
@@ -894,12 +910,14 @@ const char* Value::_InternalParse(const char* begin, const char* end, void* obje
       case 5: {
         if (static_cast<::google::protobuf::uint8>(tag) != 42) goto handle_unusual;
         ptr = Varint::Parse32Inline(ptr, &size);
-        if (!ptr) goto error;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         parser_till_end = ::google::protobuf::Struct::_InternalParse;
         object = msg->mutable_struct_value();
         if (size > end - ptr) goto len_delim_till_end;
         auto newend = ptr + size;
-        if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
+        bool ok = ctx->ParseExactRange({parser_till_end, object},
+                                       ptr, newend);
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ok);
         ptr = newend;
         break;
       }
@@ -907,43 +925,44 @@ const char* Value::_InternalParse(const char* begin, const char* end, void* obje
       case 6: {
         if (static_cast<::google::protobuf::uint8>(tag) != 50) goto handle_unusual;
         ptr = Varint::Parse32Inline(ptr, &size);
-        if (!ptr) goto error;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         parser_till_end = ::google::protobuf::ListValue::_InternalParse;
         object = msg->mutable_list_value();
         if (size > end - ptr) goto len_delim_till_end;
         auto newend = ptr + size;
-        if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
+        bool ok = ctx->ParseExactRange({parser_till_end, object},
+                                       ptr, newend);
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ok);
         ptr = newend;
         break;
       }
       default: {
       handle_unusual: (void)&&handle_unusual;
-        if ((tag & 7) == 4) {
-          if (!ctx->ValidEndGroup(tag)) goto error;
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->EndGroup(tag);
           return ptr;
         }
         auto res = UnknownFieldParse(tag, {_InternalParse, msg},
           ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
         ptr = res.first;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
         if (res.second) return ptr;
       }
     }  // switch
   }  // while
   return ptr;
-error:
-  return nullptr;
 len_delim_till_end: (void)&&len_delim_till_end;
   return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg},
                                  {parser_till_end, object}, size);
 group_continues: (void)&&group_continues;
   GOOGLE_DCHECK(ptr >= end);
-  ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth);
+  GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth, tag));
   return ptr;
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool Value::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
-#define DO_(EXPRESSION) if (!GOOGLE_PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
+#define DO_(EXPRESSION) if (!PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
   // @@protoc_insertion_point(parse_start:google.protobuf.Value)
   for (;;) {
@@ -1224,7 +1243,7 @@ void Value::MergeFrom(const ::google::protobuf::Message& from) {
   const Value* source =
       ::google::protobuf::DynamicCastToGenerated<Value>(
           &from);
-  if (source == NULL) {
+  if (source == nullptr) {
   // @@protoc_insertion_point(generalized_merge_from_cast_fail:google.protobuf.Value)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -1298,7 +1317,7 @@ void Value::Swap(Value* other) {
     temp->MergeFrom(*other);
     other->CopyFrom(*this);
     InternalSwap(temp);
-    if (GetArenaNoVirtual() == NULL) {
+    if (GetArenaNoVirtual() == nullptr) {
       delete temp;
     }
   }
@@ -1334,7 +1353,7 @@ const int ListValue::kValuesFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 ListValue::ListValue()
-  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+  : ::google::protobuf::Message(), _internal_metadata_(nullptr) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:google.protobuf.ListValue)
 }
@@ -1348,7 +1367,7 @@ ListValue::ListValue(::google::protobuf::Arena* arena)
 }
 ListValue::ListValue(const ListValue& from)
   : ::google::protobuf::Message(),
-      _internal_metadata_(NULL),
+      _internal_metadata_(nullptr),
       values_(from.values_) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:google.protobuf.ListValue)
@@ -1365,7 +1384,7 @@ ListValue::~ListValue() {
 }
 
 void ListValue::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaNoVirtual() == NULL);
+  GOOGLE_DCHECK(GetArenaNoVirtual() == nullptr);
 }
 
 void ListValue::ArenaDtor(void* object) {
@@ -1399,58 +1418,58 @@ const char* ListValue::_InternalParse(const char* begin, const char* end, void* 
   auto msg = static_cast<ListValue*>(object);
   ::google::protobuf::uint32 size; (void)size;
   int depth; (void)depth;
+  ::google::protobuf::uint32 tag;
   ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
   auto ptr = begin;
   while (ptr < end) {
-    ::google::protobuf::uint32 tag;
     ptr = Varint::Parse32Inline(ptr, &tag);
-    if (!ptr) goto error;
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     switch (tag >> 3) {
-      case 0: goto error;
       // repeated .google.protobuf.Value values = 1;
       case 1: {
         if (static_cast<::google::protobuf::uint8>(tag) != 10) goto handle_unusual;
         do {
           ptr = Varint::Parse32Inline(ptr, &size);
-          if (!ptr) goto error;
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
           parser_till_end = ::google::protobuf::Value::_InternalParse;
           object = msg->add_values();
           if (size > end - ptr) goto len_delim_till_end;
           auto newend = ptr + size;
-          if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
+          bool ok = ctx->ParseExactRange({parser_till_end, object},
+                                         ptr, newend);
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ok);
           ptr = newend;
           if (ptr >= end) break;
-        } while((*reinterpret_cast<const ::google::protobuf::uint64*>(ptr) & 255) == 10 && (ptr += 1));
+        } while ((::google::protobuf::io::UnalignedLoad<::google::protobuf::uint64>(ptr) & 255) == 10 && (ptr += 1));
         break;
       }
       default: {
       handle_unusual: (void)&&handle_unusual;
-        if ((tag & 7) == 4) {
-          if (!ctx->ValidEndGroup(tag)) goto error;
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->EndGroup(tag);
           return ptr;
         }
         auto res = UnknownFieldParse(tag, {_InternalParse, msg},
           ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
         ptr = res.first;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
         if (res.second) return ptr;
       }
     }  // switch
   }  // while
   return ptr;
-error:
-  return nullptr;
 len_delim_till_end: (void)&&len_delim_till_end;
   return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg},
                                  {parser_till_end, object}, size);
 group_continues: (void)&&group_continues;
   GOOGLE_DCHECK(ptr >= end);
-  ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth);
+  GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth, tag));
   return ptr;
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool ListValue::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
-#define DO_(EXPRESSION) if (!GOOGLE_PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
+#define DO_(EXPRESSION) if (!PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
   // @@protoc_insertion_point(parse_start:google.protobuf.ListValue)
   for (;;) {
@@ -1570,7 +1589,7 @@ void ListValue::MergeFrom(const ::google::protobuf::Message& from) {
   const ListValue* source =
       ::google::protobuf::DynamicCastToGenerated<ListValue>(
           &from);
-  if (source == NULL) {
+  if (source == nullptr) {
   // @@protoc_insertion_point(generalized_merge_from_cast_fail:google.protobuf.ListValue)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -1616,7 +1635,7 @@ void ListValue::Swap(ListValue* other) {
     temp->MergeFrom(*other);
     other->CopyFrom(*this);
     InternalSwap(temp);
-    if (GetArenaNoVirtual() == NULL) {
+    if (GetArenaNoVirtual() == nullptr) {
       delete temp;
     }
   }
@@ -1643,19 +1662,20 @@ void ListValue::InternalSwap(ListValue* other) {
 }  // namespace google
 namespace google {
 namespace protobuf {
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::google::protobuf::Struct_FieldsEntry_DoNotUse* Arena::CreateMaybeMessage< ::google::protobuf::Struct_FieldsEntry_DoNotUse >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::google::protobuf::Struct_FieldsEntry_DoNotUse* Arena::CreateMaybeMessage< ::google::protobuf::Struct_FieldsEntry_DoNotUse >(Arena* arena) {
   return Arena::CreateMessageInternal< ::google::protobuf::Struct_FieldsEntry_DoNotUse >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::google::protobuf::Struct* Arena::CreateMaybeMessage< ::google::protobuf::Struct >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::google::protobuf::Struct* Arena::CreateMaybeMessage< ::google::protobuf::Struct >(Arena* arena) {
   return Arena::CreateMessageInternal< ::google::protobuf::Struct >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::google::protobuf::Value* Arena::CreateMaybeMessage< ::google::protobuf::Value >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::google::protobuf::Value* Arena::CreateMaybeMessage< ::google::protobuf::Value >(Arena* arena) {
   return Arena::CreateMessageInternal< ::google::protobuf::Value >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::google::protobuf::ListValue* Arena::CreateMaybeMessage< ::google::protobuf::ListValue >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::google::protobuf::ListValue* Arena::CreateMaybeMessage< ::google::protobuf::ListValue >(Arena* arena) {
   return Arena::CreateMessageInternal< ::google::protobuf::ListValue >(arena);
 }
 }  // namespace protobuf
 }  // namespace google
 
 // @@protoc_insertion_point(global_scope)
+#include <google/protobuf/port_undef.inc>

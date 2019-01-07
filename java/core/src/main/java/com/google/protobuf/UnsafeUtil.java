@@ -83,6 +83,15 @@ final class UnsafeUtil {
   }
 
 
+  @SuppressWarnings("unchecked") // safe by method contract
+  static <T> T allocateInstance(Class<T> clazz) {
+    try {
+      return (T) UNSAFE.allocateInstance(clazz);
+    } catch (InstantiationException e) {
+      throw new IllegalStateException(e);
+    }
+  }
+
   static long objectFieldOffset(Field field) {
     return MEMORY_ACCESSOR.objectFieldOffset(field);
   }
@@ -226,7 +235,7 @@ final class UnsafeUtil {
   }
 
   static void copyMemory(byte[] src, long srcIndex, byte[] target, long targetIndex, long length) {
-    System.arraycopy(src, (int) srcIndex, target, (int) targetIndex, (int) length); 
+    System.arraycopy(src, (int) srcIndex, target, (int) targetIndex, (int) length);
   }
 
   static byte getByte(long address) {
@@ -253,9 +262,7 @@ final class UnsafeUtil {
     MEMORY_ACCESSOR.putLong(address, value);
   }
 
-  /**
-   * Gets the offset of the {@code address} field of the given direct {@link ByteBuffer}.
-   */
+  /** Gets the offset of the {@code address} field of the given direct {@link ByteBuffer}. */
   static long addressOffset(ByteBuffer buffer) {
     return MEMORY_ACCESSOR.getLong(buffer, BUFFER_ADDRESS_OFFSET);
   }
@@ -472,9 +479,9 @@ final class UnsafeUtil {
     public abstract void putLong(long address, long value);
 
     public abstract Object getStaticObject(Field field);
-    
+
     public abstract void copyMemory(long srcOffset, byte[] target, long targetIndex, long length);
-    
+
     public abstract void copyMemory(byte[] src, long srcIndex, long targetOffset, long length);
   }
 
@@ -553,12 +560,12 @@ final class UnsafeUtil {
     public void putDouble(Object target, long offset, double value) {
       unsafe.putDouble(target, offset, value);
     }
-    
-    @Override 
+
+    @Override
     public void copyMemory(long srcOffset, byte[] target, long targetIndex, long length) {
       unsafe.copyMemory(null, srcOffset, target, BYTE_ARRAY_BASE_OFFSET + targetIndex, length);
     }
-    
+
     @Override
     public void copyMemory(byte[] src, long srcIndex, long targetOffset, long length) {
       unsafe.copyMemory(src, BYTE_ARRAY_BASE_OFFSET + srcIndex, null, targetOffset, length);

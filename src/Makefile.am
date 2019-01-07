@@ -74,10 +74,10 @@ nobase_include_HEADERS =                                         \
   google/protobuf/stubs/once.h                                   \
   google/protobuf/stubs/platform_macros.h                        \
   google/protobuf/stubs/port.h                                   \
-  google/protobuf/stubs/singleton.h                              \
   google/protobuf/stubs/status.h                                 \
   google/protobuf/stubs/stl_util.h                               \
   google/protobuf/stubs/stringpiece.h                            \
+  google/protobuf/stubs/strutil.h                                \
   google/protobuf/stubs/template_util.h                          \
   google/protobuf/any.pb.h                                       \
   google/protobuf/api.pb.h                                       \
@@ -92,6 +92,7 @@ nobase_include_HEADERS =                                         \
   google/protobuf/dynamic_message.h                              \
   google/protobuf/empty.pb.h                                     \
   google/protobuf/extension_set.h                                \
+  google/protobuf/extension_set_inl.h                            \
   google/protobuf/field_mask.pb.h                                \
   google/protobuf/generated_enum_reflection.h                    \
   google/protobuf/generated_enum_util.h                          \
@@ -112,6 +113,7 @@ nobase_include_HEADERS =                                         \
   google/protobuf/message_lite.h                                 \
   google/protobuf/metadata.h                                     \
   google/protobuf/metadata_lite.h                                \
+  google/protobuf/parse_context.h                                \
   google/protobuf/port.h                                         \
   google/protobuf/port_def.inc                                   \
   google/protobuf/port_undef.inc                                 \
@@ -166,7 +168,7 @@ nobase_include_HEADERS =                                         \
 
 lib_LTLIBRARIES = libprotobuf-lite.la libprotobuf.la libprotoc.la
 
-libprotobuf_lite_la_LIBADD = $(PTHREAD_LIBS)
+libprotobuf_lite_la_LIBADD = $(PTHREAD_LIBS) $(LIBATOMIC_LIBS)
 libprotobuf_lite_la_LDFLAGS = -version-info 17:0:0 -export-dynamic -no-undefined
 if HAVE_LD_VERSION_SCRIPT
 libprotobuf_lite_la_LDFLAGS += -Wl,--version-script=$(srcdir)/libprotobuf-lite.map
@@ -194,7 +196,6 @@ libprotobuf_lite_la_SOURCES =                                  \
   google/protobuf/stubs/stringprintf.h                         \
   google/protobuf/stubs/structurally_valid.cc                  \
   google/protobuf/stubs/strutil.cc                             \
-  google/protobuf/stubs/strutil.h                              \
   google/protobuf/stubs/time.cc                                \
   google/protobuf/stubs/time.h                                 \
   google/protobuf/arena.cc                                     \
@@ -212,7 +213,7 @@ libprotobuf_lite_la_SOURCES =                                  \
   google/protobuf/io/zero_copy_stream.cc                       \
   google/protobuf/io/zero_copy_stream_impl_lite.cc
 
-libprotobuf_la_LIBADD = $(PTHREAD_LIBS)
+libprotobuf_la_LIBADD = $(PTHREAD_LIBS) $(LIBATOMIC_LIBS)
 libprotobuf_la_LDFLAGS = -version-info 17:0:0 -export-dynamic -no-undefined
 if HAVE_LD_VERSION_SCRIPT
 libprotobuf_la_LDFLAGS += -Wl,--version-script=$(srcdir)/libprotobuf.map
@@ -314,7 +315,6 @@ libprotoc_la_SOURCES =                                         \
   google/protobuf/compiler/command_line_interface.cc           \
   google/protobuf/compiler/plugin.cc                           \
   google/protobuf/compiler/plugin.pb.cc                        \
-  google/protobuf/compiler/scc.cc                              \
   google/protobuf/compiler/scc.h                               \
   google/protobuf/compiler/subprocess.cc                       \
   google/protobuf/compiler/subprocess.h                        \
@@ -426,6 +426,7 @@ libprotoc_la_SOURCES =                                         \
   google/protobuf/compiler/objectivec/objectivec_message.h     \
   google/protobuf/compiler/objectivec/objectivec_message_field.cc \
   google/protobuf/compiler/objectivec/objectivec_message_field.h \
+  google/protobuf/compiler/objectivec/objectivec_nsobject_methods.h  \
   google/protobuf/compiler/objectivec/objectivec_oneof.cc      \
   google/protobuf/compiler/objectivec/objectivec_oneof.h       \
   google/protobuf/compiler/objectivec/objectivec_primitive_field.cc \
@@ -527,7 +528,6 @@ protoc_inputs =                                                   \
 
 EXTRA_DIST =                                                   \
   $(protoc_inputs)                                             \
-  $(js_well_known_types_sources)                               \
   solaris/libstdc++.la                                         \
   google/protobuf/test_messages_proto3.proto                   \
   google/protobuf/test_messages_proto2.proto                   \
@@ -551,6 +551,8 @@ EXTRA_DIST =                                                   \
   google/protobuf/util/package_info.h                          \
   google/protobuf/compiler/ruby/ruby_generated_code.proto      \
   google/protobuf/compiler/ruby/ruby_generated_code_pb.rb      \
+  google/protobuf/compiler/ruby/ruby_generated_code_proto2.proto \
+  google/protobuf/compiler/ruby/ruby_generated_code_proto2_pb.rb \
   google/protobuf/compiler/package_info.h                      \
   google/protobuf/compiler/zip_output_unittest.sh              \
   libprotobuf-lite.map                                         \

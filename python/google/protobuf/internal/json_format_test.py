@@ -200,6 +200,16 @@ class JsonFormatTest(JsonFormatBase):
     json_format.ParseDict(message_dict, parsed_message)
     self.assertEqual(message, parsed_message)
 
+  def testJsonParseDictToAnyDoesNotAlterInput(self):
+    orig_dict = {
+        "int32Value": 20,
+        "@type": "type.googleapis.com/proto3.TestMessage"
+    }
+    copied_dict = json.loads(json.dumps(orig_dict))
+    parsed_message = any_pb2.Any()
+    json_format.ParseDict(copied_dict, parsed_message)
+    self.assertEqual(copied_dict, orig_dict)
+
   def testExtensionSerializationDictMatchesProto3Spec(self):
     """See go/proto3-json-spec for spec.
     """
@@ -495,6 +505,8 @@ class JsonFormatTest(JsonFormatBase):
     message.value['email'] = None
     message.value.get_or_create_struct('address')['city'] = 'SFO'
     message.value['address']['house_number'] = 1024
+    message.value.get_or_create_struct('empty_struct')
+    message.value.get_or_create_list('empty_list')
     struct_list = message.value.get_or_create_list('list')
     struct_list.extend([6, 'seven', True, False, None])
     struct_list.add_struct()['subkey2'] = 9
@@ -509,6 +521,8 @@ class JsonFormatTest(JsonFormatBase):
             '      "city": "SFO", '
             '      "house_number": 1024'
             '    }, '
+            '    "empty_struct": {}, '
+            '    "empty_list": [], '
             '    "age": 10, '
             '    "name": "Jim", '
             '    "attend": true, '
@@ -519,6 +533,9 @@ class JsonFormatTest(JsonFormatBase):
             '}'))
     parsed_message = json_format_proto3_pb2.TestStruct()
     self.CheckParseBack(message, parsed_message)
+    # check for regression; this used to raise
+    parsed_message.value['empty_struct']
+    parsed_message.value['empty_list']
 
   def testValueMessage(self):
     message = json_format_proto3_pb2.TestValue()

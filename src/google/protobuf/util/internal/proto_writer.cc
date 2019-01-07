@@ -52,8 +52,8 @@ namespace protobuf {
 namespace util {
 namespace converter {
 
-using ::GOOGLE_PROTOBUF_NAMESPACE_ID::internal::WireFormatLite;
 using io::CodedOutputStream;
+using ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite;
 using util::Status;
 using util::StatusOr;
 using util::error::INVALID_ARGUMENT;
@@ -67,6 +67,7 @@ ProtoWriter::ProtoWriter(TypeResolver* type_resolver,
       own_typeinfo_(true),
       done_(false),
       ignore_unknown_fields_(false),
+      ignore_unknown_enum_values_(false),
       use_lower_camel_for_enums_(false),
       element_(nullptr),
       size_insert_(),
@@ -86,6 +87,7 @@ ProtoWriter::ProtoWriter(const TypeInfo* typeinfo,
       own_typeinfo_(false),
       done_(false),
       ignore_unknown_fields_(false),
+      ignore_unknown_enum_values_(false),
       use_lower_camel_for_enums_(false),
       element_(nullptr),
       size_insert_(),
@@ -384,27 +386,45 @@ void ProtoWriter::ProtoElement::RegisterField(
 }
 
 string ProtoWriter::ProtoElement::ToString() const {
-  if (parent() == nullptr) return "";
-  string loc = parent()->ToString();
-  if (!ow_->IsRepeated(*parent_field_) ||
-      parent()->parent_field_ != parent_field_) {
-    string name = parent_field_->name();
-    int i = 0;
-    while (i < name.size() && (ascii_isalnum(name[i]) || name[i] == '_')) ++i;
-    if (i > 0 && i == name.size()) {  // safe field name
-      if (loc.empty()) {
-        loc = name;
+  string loc = "";
+
+  // first populate a stack with the nodes since we need to process them
+  // from root to leaf when generating the string location
+  const ProtoWriter::ProtoElement* now = this;
+  std::stack<const ProtoWriter::ProtoElement*> element_stack;
+  while (now->parent() != nullptr) {
+    element_stack.push(now);
+    now = now->parent();
+  }
+
+  // now pop each node from the stack and append to the location string
+  while (!element_stack.empty()) {
+    now = element_stack.top();
+    element_stack.pop();
+
+    if (!ow_->IsRepeated(*(now->parent_field_)) ||
+        now->parent()->parent_field_ != now->parent_field_) {
+      string name = now->parent_field_->name();
+      int i = 0;
+      while (i < name.size() && (ascii_isalnum(name[i]) || name[i] == '_')) ++i;
+      if (i > 0 && i == name.size()) {  // safe field name
+        if (loc.empty()) {
+          loc = name;
+        } else {
+          StrAppend(&loc, ".", name);
+        }
       } else {
-        StrAppend(&loc, ".", name);
+        StrAppend(&loc, "[\"", CEscape(name), "\"]");
       }
-    } else {
-      StrAppend(&loc, "[\"", CEscape(name), "\"]");
+    }
+
+    int array_index_now = now->array_index_;
+    if (ow_->IsRepeated(*(now->parent_field_)) && array_index_now > 0) {
+      StrAppend(&loc, "[", array_index_now - 1, "]");
     }
   }
-  if (ow_->IsRepeated(*parent_field_) && array_index_ > 0) {
-    StrAppend(&loc, "[", array_index_ - 1, "]");
-  }
-  return loc.empty() ? "." : loc;
+
+  return loc;
 }
 
 bool ProtoWriter::ProtoElement::IsOneofIndexTaken(int32 index) {
@@ -669,13 +689,15 @@ ProtoWriter* ProtoWriter::RenderPrimitiveField(
       break;
     }
     case google::protobuf::Field_Kind_TYPE_ENUM: {
-      status = WriteEnum(
-          field.number(), data, typeinfo_->GetEnumByTypeUrl(field.type_url()),
-          stream_.get(), use_lower_camel_for_enums_, ignore_unknown_fields_);
+      status = WriteEnum(field.number(), data,
+                         typeinfo_->GetEnumByTypeUrl(field.type_url()),
+                         stream_.get(), use_lower_camel_for_enums_,
+                         ignore_unknown_enum_values_);
       break;
     }
     default:  // TYPE_GROUP or TYPE_MESSAGE
-      status = Status(INVALID_ARGUMENT, data.ToString().ValueOrDie());
+      status = Status(util::error::INVALID_ARGUMENT,
+                      data.ToString().ValueOrDie());
   }
 
   if (!status.ok()) {
@@ -684,7 +706,7 @@ ProtoWriter* ProtoWriter::RenderPrimitiveField(
       element_.reset(new ProtoElement(element_.release(), &field, type, false));
     }
     InvalidValue(google::protobuf::Field_Kind_Name(field.kind()),
-                 status.error_message());
+                 status.message());
     element_.reset(element()->pop());
     return this;
   }

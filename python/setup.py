@@ -1,24 +1,22 @@
 #! /usr/bin/env python
 #
 # See README for usage instructions.
+from distutils import util
 import glob
 import os
+import pkg_resources
+import re
 import subprocess
 import sys
+import sysconfig
 import platform
 
 # We must use setuptools, not distutils, because we need to use the
 # namespace_packages option for the "google" package.
 from setuptools import setup, Extension, find_packages
 
+from distutils.command.build_py import build_py as _build_py
 from distutils.command.clean import clean as _clean
-
-if sys.version_info[0] == 3:
-  # Python 3
-  from distutils.command.build_py import build_py_2to3 as _build_py
-else:
-  # Python 2
-  from distutils.command.build_py import build_py as _build_py
 from distutils.spawn import find_executable
 
 # Find the Protocol Compiler.
@@ -191,6 +189,18 @@ if __name__ == '__main__':
     if sys.platform == 'darwin':
       extra_compile_args.append("-Wno-shorten-64-to-32");
 
+    # https://developer.apple.com/documentation/xcode_release_notes/xcode_10_release_notes
+    # C++ projects must now migrate to libc++ and are recommended to set a
+    # deployment target of macOS 10.9 or later, or iOS 7 or later.
+    if sys.platform == 'darwin':
+      mac_target = sysconfig.get_config_var('MACOSX_DEPLOYMENT_TARGET')
+      if mac_target and (pkg_resources.parse_version(mac_target) <
+                       pkg_resources.parse_version('10.9.0')):
+        os.environ['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
+        os.environ['_PYTHON_HOST_PLATFORM'] = re.sub(
+            r'macosx-[0-9]+\.[0-9]+-(.+)', r'macosx-10.9-\1',
+            util.get_platform())
+
     # https://github.com/Theano/Theano/issues/4926
     if sys.platform == 'win32':
       extra_compile_args.append('-D_hypot=hypot')
@@ -239,7 +249,7 @@ if __name__ == '__main__':
       name='protobuf',
       version=GetVersion(),
       description='Protocol Buffers',
-      download_url='https://github.com/google/protobuf/releases',
+      download_url='https://github.com/protocolbuffers/protobuf/releases',
       long_description="Protocol Buffers are Google's data interchange format",
       url='https://developers.google.com/protocol-buffers/',
       maintainer='protobuf@googlegroups.com',

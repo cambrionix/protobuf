@@ -254,6 +254,16 @@ void custom_data_init(const zend_class_entry* ce,
               &intern->std PHP_PROTO_TSRMLS_CC);
 }
 
+#define INIT_MESSAGE_WITH_ARRAY                                    \
+  {                                                                \
+    zval* array_wrapper = NULL;                                    \
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,           \
+                              "|a!", &array_wrapper) == FAILURE) { \
+      return;                                                      \
+    }                                                              \
+    Message_construct(getThis(), array_wrapper);                   \
+  }
+
 void build_class_from_descriptor(
     PHP_PROTO_HASHTABLE_VALUE php_descriptor TSRMLS_DC) {
   Descriptor* desc = UNBOX_HASHTABLE_VALUE(Descriptor, php_descriptor);
@@ -361,15 +371,26 @@ void Message_construct(zval* msg, zval* array_wrapper) {
       zval* submsg = CACHED_PTR_TO_ZVAL_PTR(cached);
       ZVAL_OBJ(submsg, desc->klass->create_object(desc->klass TSRMLS_CC));
       Message_construct(submsg, NULL);
-      MessageHeader* from = UNBOX(MessageHeader,
-                                  CACHED_PTR_TO_ZVAL_PTR((CACHED_VALUE*)value));
       MessageHeader* to = UNBOX(MessageHeader, submsg);
-      if(from->descriptor != to->descriptor) {
-        zend_error(E_USER_ERROR, "Cannot merge messages with different class.");
-        return;
-      }
+      const upb_filedef *file = upb_def_file(upb_msgdef_upcast(submsgdef));
+      if (!strcmp(upb_filedef_name(file), "google/protobuf/wrappers.proto") &&
+          Z_TYPE_P(CACHED_PTR_TO_ZVAL_PTR((CACHED_VALUE*)value)) != IS_OBJECT) {
+        const upb_fielddef *value_field = upb_msgdef_itof(submsgdef, 1);
+        layout_set(to->descriptor->layout, to,
+                   value_field, CACHED_PTR_TO_ZVAL_PTR((CACHED_VALUE*)value)
+                   TSRMLS_CC);
+      } else {
+        MessageHeader* from =
+            UNBOX(MessageHeader,
+                  CACHED_PTR_TO_ZVAL_PTR((CACHED_VALUE*)value));
+        if(from->descriptor != to->descriptor) {
+          zend_error(E_USER_ERROR,
+                     "Cannot merge messages with different class.");
+          return;
+        }
 
-      layout_merge(from->descriptor->layout, from, to TSRMLS_CC);
+        layout_merge(from->descriptor->layout, from, to TSRMLS_CC);
+      }
     } else {
       message_set_property_internal(msg, &key,
           CACHED_PTR_TO_ZVAL_PTR((CACHED_VALUE*)value) TSRMLS_CC);
@@ -382,14 +403,7 @@ void Message_construct(zval* msg, zval* array_wrapper) {
 // modified. As a result, the first created instance will be a normal zend
 // object. Here, we manually modify it to our message in such a case.
 PHP_METHOD(Message, __construct) {
-  // Init message with array
-  zval* array_wrapper = NULL;
-  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,
-                            "|a!", &array_wrapper) == FAILURE) {
-    return;
-  }
-
-  Message_construct(getThis(), array_wrapper);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_METHOD(Message, clear) {
@@ -848,6 +862,8 @@ static void init_file_wrappers(TSRMLS_D) {
 // -----------------------------------------------------------------------------
 
 static zend_function_entry field_cardinality_methods[] = {
+  PHP_ME(Field_Cardinality, name, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+  PHP_ME(Field_Cardinality, value, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
   {NULL, NULL, NULL}
 };
 
@@ -872,11 +888,60 @@ PHP_PROTO_INIT_ENUMCLASS_START("Google\\Protobuf\\Field\\Cardinality",
 #endif
 PHP_PROTO_INIT_ENUMCLASS_END
 
+PHP_METHOD(Field_Cardinality, name) {
+  PHP_PROTO_LONG value;
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &value) ==
+      FAILURE) {
+    return;
+  }
+  switch (value) {
+    case 0:
+      PHP_PROTO_RETURN_STRING("CARDINALITY_UNKNOWN", 1);
+    case 1:
+      PHP_PROTO_RETURN_STRING("CARDINALITY_OPTIONAL", 1);
+    case 2:
+      PHP_PROTO_RETURN_STRING("CARDINALITY_REQUIRED", 1);
+    case 3:
+      PHP_PROTO_RETURN_STRING("CARDINALITY_REPEATED", 1);
+    default:
+      zend_throw_exception(
+          NULL,
+          "Enum Google\\Protobuf\\Field_Cardinality has no name "
+          "defined for value %d.",
+          value,
+          0 TSRMLS_CC);
+  }
+}
+
+PHP_METHOD(Field_Cardinality, value) {
+  char *name = NULL;
+  PHP_PROTO_SIZE name_len;
+
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) ==
+      FAILURE) {
+    return;
+  }
+
+  if (strncmp(name, "CARDINALITY_UNKNOWN", name_len) == 0) RETURN_LONG(0);
+  if (strncmp(name, "CARDINALITY_OPTIONAL", name_len) == 0) RETURN_LONG(1);
+  if (strncmp(name, "CARDINALITY_REQUIRED", name_len) == 0) RETURN_LONG(2);
+  if (strncmp(name, "CARDINALITY_REPEATED", name_len) == 0) RETURN_LONG(3);
+
+  zend_throw_exception(
+      NULL,
+      "Enum Google\\Protobuf\\Field_Cardinality has no value "
+      "defined for name %s.",
+      name,
+      0 TSRMLS_CC);
+}
+
 // -----------------------------------------------------------------------------
 // Field_Kind
 // -----------------------------------------------------------------------------
 
 static zend_function_entry field_kind_methods[] = {
+  PHP_ME(Field_Kind, name, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+  PHP_ME(Field_Kind, value, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
   {NULL, NULL, NULL}
 };
 
@@ -931,11 +996,105 @@ PHP_PROTO_INIT_ENUMCLASS_START("Google\\Protobuf\\Field\\Kind",
 #endif
 PHP_PROTO_INIT_ENUMCLASS_END
 
+PHP_METHOD(Field_Kind, name) {
+  PHP_PROTO_LONG value;
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &value) ==
+      FAILURE) {
+    return;
+  }
+  switch (value) {
+    case 0:
+      PHP_PROTO_RETURN_STRING("TYPE_UNKNOWN", 1);
+    case 1:
+      PHP_PROTO_RETURN_STRING("TYPE_DOUBLE", 1);
+    case 2:
+      PHP_PROTO_RETURN_STRING("TYPE_FLOAT", 1);
+    case 3:
+      PHP_PROTO_RETURN_STRING("TYPE_INT64", 1);
+    case 4:
+      PHP_PROTO_RETURN_STRING("TYPE_UINT64", 1);
+    case 5:
+      PHP_PROTO_RETURN_STRING("TYPE_INT32", 1);
+    case 6:
+      PHP_PROTO_RETURN_STRING("TYPE_FIXED64", 1);
+    case 7:
+      PHP_PROTO_RETURN_STRING("TYPE_FIXED32", 1);
+    case 8:
+      PHP_PROTO_RETURN_STRING("TYPE_BOOL", 1);
+    case 9:
+      PHP_PROTO_RETURN_STRING("TYPE_STRING", 1);
+    case 10:
+      PHP_PROTO_RETURN_STRING("TYPE_GROUP", 1);
+    case 11:
+      PHP_PROTO_RETURN_STRING("TYPE_MESSAGE", 1);
+    case 12:
+      PHP_PROTO_RETURN_STRING("TYPE_BYTES", 1);
+    case 13:
+      PHP_PROTO_RETURN_STRING("TYPE_UINT32", 1);
+    case 14:
+      PHP_PROTO_RETURN_STRING("TYPE_ENUM", 1);
+    case 15:
+      PHP_PROTO_RETURN_STRING("TYPE_SFIXED32", 1);
+    case 16:
+      PHP_PROTO_RETURN_STRING("TYPE_SFIXED64", 1);
+    case 17:
+      PHP_PROTO_RETURN_STRING("TYPE_SINT32", 1);
+    case 18:
+      PHP_PROTO_RETURN_STRING("TYPE_SINT64", 1);
+    default:
+      zend_throw_exception(
+          NULL,
+          "Enum Google\\Protobuf\\Field_Kind has no name "
+          "defined for value %d.",
+          value,
+          0 TSRMLS_CC);
+  }
+}
+
+PHP_METHOD(Field_Kind, value) {
+  char *name = NULL;
+  PHP_PROTO_SIZE name_len;
+
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) ==
+      FAILURE) {
+    return;
+  }
+
+  if (strncmp(name, "TYPE_UNKNOWN", name_len) == 0) RETURN_LONG(0);
+  if (strncmp(name, "TYPE_DOUBLE", name_len) == 0) RETURN_LONG(1);
+  if (strncmp(name, "TYPE_FLOAT", name_len) == 0) RETURN_LONG(2);
+  if (strncmp(name, "TYPE_INT64", name_len) == 0) RETURN_LONG(3);
+  if (strncmp(name, "TYPE_UINT64", name_len) == 0) RETURN_LONG(4);
+  if (strncmp(name, "TYPE_INT32", name_len) == 0) RETURN_LONG(5);
+  if (strncmp(name, "TYPE_FIXED64", name_len) == 0) RETURN_LONG(6);
+  if (strncmp(name, "TYPE_FIXED32", name_len) == 0) RETURN_LONG(7);
+  if (strncmp(name, "TYPE_BOOL", name_len) == 0) RETURN_LONG(8);
+  if (strncmp(name, "TYPE_STRING", name_len) == 0) RETURN_LONG(9);
+  if (strncmp(name, "TYPE_GROUP", name_len) == 0) RETURN_LONG(10);
+  if (strncmp(name, "TYPE_MESSAGE", name_len) == 0) RETURN_LONG(11);
+  if (strncmp(name, "TYPE_BYTES", name_len) == 0) RETURN_LONG(12);
+  if (strncmp(name, "TYPE_UINT32", name_len) == 0) RETURN_LONG(13);
+  if (strncmp(name, "TYPE_ENUM", name_len) == 0) RETURN_LONG(14);
+  if (strncmp(name, "TYPE_SFIXED32", name_len) == 0) RETURN_LONG(15);
+  if (strncmp(name, "TYPE_SFIXED64", name_len) == 0) RETURN_LONG(16);
+  if (strncmp(name, "TYPE_SINT32", name_len) == 0) RETURN_LONG(17);
+  if (strncmp(name, "TYPE_SINT64", name_len) == 0) RETURN_LONG(18);
+
+  zend_throw_exception(
+      NULL,
+      "Enum Google\\Protobuf\\Field_Kind has no value "
+      "defined for name %s.",
+      name,
+      0 TSRMLS_CC);
+}
+
 // -----------------------------------------------------------------------------
 // NullValue
 // -----------------------------------------------------------------------------
 
 static zend_function_entry null_value_methods[] = {
+  PHP_ME(NullValue, name, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+  PHP_ME(NullValue, value, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
   {NULL, NULL, NULL}
 };
 
@@ -948,11 +1107,51 @@ PHP_PROTO_INIT_ENUMCLASS_START("Google\\Protobuf\\NullValue",
                                    "NULL_VALUE", 10, 0 TSRMLS_CC);
 PHP_PROTO_INIT_ENUMCLASS_END
 
+PHP_METHOD(NullValue, name) {
+  PHP_PROTO_LONG value;
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &value) ==
+      FAILURE) {
+    return;
+  }
+  switch (value) {
+    case 0:
+      PHP_PROTO_RETURN_STRING("NULL_VALUE", 1);
+    default:
+      zend_throw_exception(
+          NULL,
+          "Enum Google\\Protobuf\\NullValue has no name "
+          "defined for value %d.",
+          value,
+          0 TSRMLS_CC);
+  }
+}
+
+PHP_METHOD(NullValue, value) {
+  char *name = NULL;
+  PHP_PROTO_SIZE name_len;
+
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) ==
+      FAILURE) {
+    return;
+  }
+
+  if (strncmp(name, "NULL_VALUE", name_len) == 0) RETURN_LONG(0);
+
+  zend_throw_exception(
+      NULL,
+      "Enum Google\\Protobuf\\NullValue has no value "
+      "defined for name %s.",
+      name,
+      0 TSRMLS_CC);
+}
+
 // -----------------------------------------------------------------------------
 // Syntax
 // -----------------------------------------------------------------------------
 
 static zend_function_entry syntax_methods[] = {
+  PHP_ME(Syntax, name, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+  PHP_ME(Syntax, value, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
   {NULL, NULL, NULL}
 };
 
@@ -967,7 +1166,46 @@ PHP_PROTO_INIT_ENUMCLASS_START("Google\\Protobuf\\Syntax",
                                    "SYNTAX_PROTO3", 13, 1 TSRMLS_CC);
 PHP_PROTO_INIT_ENUMCLASS_END
 
+PHP_METHOD(Syntax, name) {
+  PHP_PROTO_LONG value;
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &value) ==
+      FAILURE) {
+    return;
+  }
+  switch (value) {
+    case 0:
+      PHP_PROTO_RETURN_STRING("SYNTAX_PROTO2", 1);
+    case 1:
+      PHP_PROTO_RETURN_STRING("SYNTAX_PROTO3", 1);
+    default:
+      zend_throw_exception(
+          NULL,
+          "Enum Google\\Protobuf\\Syntax has no name "
+          "defined for value %d.",
+          value,
+          0 TSRMLS_CC);
+  }
+}
 
+PHP_METHOD(Syntax, value) {
+  char *name = NULL;
+  PHP_PROTO_SIZE name_len;
+
+  if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) ==
+      FAILURE) {
+    return;
+  }
+
+  if (strncmp(name, "SYNTAX_PROTO2", name_len) == 0) RETURN_LONG(0);
+  if (strncmp(name, "SYNTAX_PROTO3", name_len) == 0) RETURN_LONG(1);
+
+  zend_throw_exception(
+      NULL,
+      "Enum Google\\Protobuf\\Syntax has no value "
+      "defined for name %s.",
+      name,
+      0 TSRMLS_CC);
+}
 
 // -----------------------------------------------------------------------------
 // Define message
@@ -1024,7 +1262,7 @@ static void hex_to_binary(const char* hex, char** binary, int* binary_len) {
 PHP_METHOD(Any, __construct) {
   init_file_any(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(any_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Any, any, TypeUrl, "type_url")
@@ -1193,7 +1431,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Duration, __construct) {
   init_file_duration(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(duration_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Duration, duration, Seconds, "seconds")
@@ -1229,7 +1467,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Timestamp, __construct) {
   init_file_timestamp(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(timestamp_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Timestamp, timestamp, Seconds, "seconds")
@@ -1432,7 +1670,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Api, __construct) {
   init_file_api(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(api_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Api, api, Name, "name")
@@ -1467,7 +1705,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(BoolValue, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(bool_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(BoolValue, bool_value, Value, "value")
@@ -1496,7 +1734,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(BytesValue, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(bytes_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(BytesValue, bytes_value, Value, "value")
@@ -1525,7 +1763,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(DoubleValue, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(double_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(DoubleValue, double_value, Value, "value")
@@ -1570,7 +1808,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Enum, __construct) {
   init_file_type(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(enum_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Enum, enum, Name, "name")
@@ -1611,7 +1849,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(EnumValue, __construct) {
   init_file_type(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(enum_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(EnumValue, enum_value, Name, "name")
@@ -1642,7 +1880,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(FieldMask, __construct) {
   init_file_field_mask(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(field_mask_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(FieldMask, field_mask, Paths, "paths")
@@ -1707,7 +1945,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Field, __construct) {
   init_file_type(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(field_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Field, field, Kind, "kind")
@@ -1745,7 +1983,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(FloatValue, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(float_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(FloatValue, float_value, Value, "value")
@@ -1770,7 +2008,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(GPBEmpty, __construct) {
   init_file_empty(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(empty_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 
@@ -1798,7 +2036,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Int32Value, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(int32_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Int32Value, int32_value, Value, "value")
@@ -1827,7 +2065,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Int64Value, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(int64_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Int64Value, int64_value, Value, "value")
@@ -1856,7 +2094,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(ListValue, __construct) {
   init_file_struct(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(list_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(ListValue, list_value, Values, "values")
@@ -1909,7 +2147,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Method, __construct) {
   init_file_api(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(method_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Method, method, Name, "name")
@@ -1948,7 +2186,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Mixin, __construct) {
   init_file_api(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(mixin_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Mixin, mixin, Name, "name")
@@ -1982,7 +2220,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Option, __construct) {
   init_file_type(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(option_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Option, option, Name, "name")
@@ -2012,7 +2250,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(SourceContext, __construct) {
   init_file_source_context(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(source_context_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(SourceContext, source_context, FileName, "file_name")
@@ -2041,7 +2279,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(StringValue, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(string_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(StringValue, string_value, Value, "value")
@@ -2070,7 +2308,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Struct, __construct) {
   init_file_struct(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(struct_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Struct, struct, Fields, "fields")
@@ -2119,7 +2357,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Type, __construct) {
   init_file_type(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(type_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(Type, type, Name, "name")
@@ -2153,7 +2391,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(UInt32Value, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(u_int32_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(UInt32Value, u_int32_value, Value, "value")
@@ -2182,7 +2420,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(UInt64Value, __construct) {
   init_file_wrappers(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(u_int64_value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_FIELD_ACCESSORS(UInt64Value, u_int64_value, Value, "value")
@@ -2222,7 +2460,7 @@ PHP_PROTO_INIT_SUBMSGCLASS_END
 PHP_METHOD(Value, __construct) {
   init_file_struct(TSRMLS_C);
   MessageHeader* intern = UNBOX(MessageHeader, getThis());
-  custom_data_init(value_type, intern PHP_PROTO_TSRMLS_CC);
+  INIT_MESSAGE_WITH_ARRAY;
 }
 
 PHP_PROTO_ONEOF_FIELD_ACCESSORS(Value, value, NullValue, "null_value")

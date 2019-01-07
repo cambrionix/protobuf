@@ -77,8 +77,11 @@ public abstract class CodedInputStream {
     return newInstance(input, DEFAULT_BUFFER_SIZE);
   }
 
-  /** Create a new CodedInputStream wrapping the given InputStream. */
-  static CodedInputStream newInstance(final InputStream input, int bufferSize) {
+  /** Create a new CodedInputStream wrapping the given InputStream, with a specified buffer size. */
+  public static CodedInputStream newInstance(final InputStream input, int bufferSize) {
+    if (bufferSize <= 0) {
+      throw new IllegalArgumentException("bufferSize must be > 0");
+    }
     if (input == null) {
       // TODO(nathanmittler): Ideally we should throw here. This is done for backward compatibility.
       return newInstance(EMPTY_BYTE_ARRAY);
@@ -130,7 +133,7 @@ public abstract class CodedInputStream {
 
   /** Create a new CodedInputStream wrapping the given byte array slice. */
   public static CodedInputStream newInstance(final byte[] buf, final int off, final int len) {
-    return newInstance(buf, off, len, false /* bufferIsImmutable */);
+    return newInstance(buf, off, len, /* bufferIsImmutable= */ false);
   }
 
   /** Create a new CodedInputStream wrapping the given byte array slice. */
@@ -166,7 +169,7 @@ public abstract class CodedInputStream {
    * trying to alter the ByteBuffer's status.
    */
   public static CodedInputStream newInstance(ByteBuffer buf) {
-    return newInstance(buf, false /* bufferIsImmutable */);
+    return newInstance(buf, /* bufferIsImmutable= */ false);
   }
 
   /** Create a new CodedInputStream wrapping the given buffer. */
@@ -409,7 +412,6 @@ public abstract class CodedInputStream {
     sizeLimit = limit;
     return oldLimit;
   }
-
 
   private boolean shouldDiscardUnknownFields = false;
 
@@ -2781,7 +2783,8 @@ public abstract class CodedInputStream {
                   sizeLimit - totalBytesRetired - bufferSize));
       if (bytesRead == 0 || bytesRead < -1 || bytesRead > buffer.length) {
         throw new IllegalStateException(
-            "InputStream#read(byte[]) returned invalid result: "
+            input.getClass()
+                + "#read(byte[]) returned invalid result: "
                 + bytesRead
                 + "\nThe InputStream implementation is buggy.");
       }
@@ -3003,20 +3006,46 @@ public abstract class CodedInputStream {
         throw InvalidProtocolBufferException.truncatedMessage();
       }
 
-      // Skipping more bytes than are in the buffer.  First skip what we have.
-      int tempPos = bufferSize - pos;
-      pos = bufferSize;
-
-      // Keep refilling the buffer until we get to the point we wanted to skip to.
-      // This has the side effect of ensuring the limits are updated correctly.
-      refillBuffer(1);
-      while (size - tempPos > bufferSize) {
-        tempPos += bufferSize;
+      if (refillCallback != null) {
+        // Skipping more bytes than are in the buffer.  First skip what we have.
+        int tempPos = bufferSize - pos;
         pos = bufferSize;
-        refillBuffer(1);
-      }
 
-      pos = size - tempPos;
+        // Keep refilling the buffer until we get to the point we wanted to skip to.
+        // This has the side effect of ensuring the limits are updated correctly.
+        refillBuffer(1);
+        while (size - tempPos > bufferSize) {
+          tempPos += bufferSize;
+          pos = bufferSize;
+          refillBuffer(1);
+        }
+
+        pos = size - tempPos;
+      } else {
+        // Skipping more bytes than are in the buffer.  First skip what we have.
+        totalBytesRetired += pos;
+        int totalSkipped = bufferSize - pos;
+        bufferSize = 0;
+        pos = 0;
+
+        try {
+          while (totalSkipped < size) {
+            int toSkip = size - totalSkipped;
+            long skipped = input.skip(toSkip);
+            if (skipped < 0 || skipped > toSkip) {
+              throw new IllegalStateException(
+                  input.getClass()
+                      + "#skip returned invalid result: "
+                      + skipped
+                      + "\nThe InputStream implementation is buggy.");
+            }
+            totalSkipped += (int) skipped;
+          }
+        } finally {
+          totalBytesRetired += totalSkipped;
+          recomputeBufferSizeAfterLimit();
+        }
+      }
     }
   }
 

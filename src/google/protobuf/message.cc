@@ -36,12 +36,14 @@
 #include <stack>
 #include <unordered_map>
 
+#include <google/protobuf/generated_message_reflection.h>
 #include <google/protobuf/message.h>
 
 #include <google/protobuf/stubs/casts.h>
 #include <google/protobuf/stubs/logging.h>
 #include <google/protobuf/stubs/common.h>
 #include <google/protobuf/descriptor.pb.h>
+#include <google/protobuf/parse_context.h>
 #include <google/protobuf/reflection_internal.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -50,7 +52,9 @@
 #include <google/protobuf/map_field.h>
 #include <google/protobuf/map_field_inl.h>
 #include <google/protobuf/reflection_ops.h>
+#include <google/protobuf/unknown_field_set.h>
 #include <google/protobuf/wire_format.h>
+#include <google/protobuf/wire_format_lite.h>
 #include <google/protobuf/stubs/strutil.h>
 
 #include <google/protobuf/stubs/map_util.h>
@@ -72,9 +76,12 @@ using internal::WireFormatLite;
 void Message::MergeFrom(const Message& from) {
   const Descriptor* descriptor = GetDescriptor();
   GOOGLE_CHECK_EQ(from.GetDescriptor(), descriptor)
-    << ": Tried to merge from a message with a different type.  "
-       "to: " << descriptor->full_name() << ", "
-       "from: " << from.GetDescriptor()->full_name();
+      << ": Tried to merge from a message with a different type.  "
+         "to: "
+      << descriptor->full_name()
+      << ", "
+         "from: "
+      << from.GetDescriptor()->full_name();
   ReflectionOps::Merge(from, this);
 }
 
@@ -85,19 +92,18 @@ void Message::CheckTypeAndMergeFrom(const MessageLite& other) {
 void Message::CopyFrom(const Message& from) {
   const Descriptor* descriptor = GetDescriptor();
   GOOGLE_CHECK_EQ(from.GetDescriptor(), descriptor)
-    << ": Tried to copy from a message with a different type. "
-       "to: " << descriptor->full_name() << ", "
-       "from: " << from.GetDescriptor()->full_name();
+      << ": Tried to copy from a message with a different type. "
+         "to: "
+      << descriptor->full_name()
+      << ", "
+         "from: "
+      << from.GetDescriptor()->full_name();
   ReflectionOps::Copy(from, this);
 }
 
-string Message::GetTypeName() const {
-  return GetDescriptor()->full_name();
-}
+string Message::GetTypeName() const { return GetDescriptor()->full_name(); }
 
-void Message::Clear() {
-  ReflectionOps::Clear(this);
-}
+void Message::Clear() { ReflectionOps::Clear(this); }
 
 bool Message::IsInitialized() const {
   return ReflectionOps::IsInitialized(*this);
@@ -114,9 +120,9 @@ string Message::InitializationErrorString() const {
 }
 
 void Message::CheckInitialized() const {
-  GOOGLE_CHECK(IsInitialized())
-    << "Message of type \"" << GetDescriptor()->full_name()
-    << "\" is missing required fields: " << InitializationErrorString();
+  GOOGLE_CHECK(IsInitialized()) << "Message of type \"" << GetDescriptor()->full_name()
+                         << "\" is missing required fields: "
+                         << InitializationErrorString();
 }
 
 void Message::DiscardUnknownFields() {
@@ -156,27 +162,30 @@ class ReflectionAccessor {
  public:
   static void* GetOffset(void* msg, const google::protobuf::FieldDescriptor* f,
                          const google::protobuf::Reflection* r) {
-    auto gr =
-        dynamic_cast<const google::protobuf::internal::GeneratedMessageReflection*>(r);
-    GOOGLE_CHECK(gr != nullptr);
-    return static_cast<char*>(msg) + gr->schema_.GetFieldOffset(f);
+    return static_cast<char*>(msg) + CheckedCast(r)->schema_.GetFieldOffset(f);
   }
 
-  static google::protobuf::internal::ExtensionSet* GetExtensionSet(
-      void* msg, const google::protobuf::Reflection* r) {
-    auto gr =
-        dynamic_cast<const google::protobuf::internal::GeneratedMessageReflection*>(r);
-    GOOGLE_CHECK(gr != nullptr);
-    return reinterpret_cast<google::protobuf::internal::ExtensionSet*>(
-        static_cast<char*>(msg) + gr->schema_.GetExtensionSetOffset());
+  static ExtensionSet* GetExtensionSet(void* msg, const google::protobuf::Reflection* r) {
+    return reinterpret_cast<ExtensionSet*>(
+        static_cast<char*>(msg) +
+        CheckedCast(r)->schema_.GetExtensionSetOffset());
   }
-  static google::protobuf::internal::InternalMetadataWithArena* GetMetadata(
-      void* msg, const google::protobuf::Reflection* r) {
-    auto gr =
-        dynamic_cast<const google::protobuf::internal::GeneratedMessageReflection*>(r);
+  static InternalMetadataWithArena* GetMetadata(void* msg,
+                                                const google::protobuf::Reflection* r) {
+    return reinterpret_cast<InternalMetadataWithArena*>(
+        static_cast<char*>(msg) + CheckedCast(r)->schema_.GetMetadataOffset());
+  }
+  static void* GetRepeatedEnum(const Reflection* reflection,
+                               const FieldDescriptor* field, Message* msg) {
+    return reflection->MutableRawRepeatedField(
+        msg, field, FieldDescriptor::CPPTYPE_ENUM, 0, nullptr);
+  }
+
+ private:
+  static const GeneratedMessageReflection* CheckedCast(const Reflection* r) {
+    auto gr = dynamic_cast<const GeneratedMessageReflection*>(r);
     GOOGLE_CHECK(gr != nullptr);
-    return reinterpret_cast<google::protobuf::internal::InternalMetadataWithArena*>(
-        static_cast<char*>(msg) + gr->schema_.GetMetadataOffset());
+    return gr;
   }
 };
 
@@ -276,16 +285,15 @@ ParseClosure GetPackedField(const FieldDescriptor* field, Message* msg,
     HANDLE_PACKED_TYPE(UINT64, uint64, UInt64);
     HANDLE_PACKED_TYPE(BOOL, bool, Bool);
     case FieldDescriptor::TYPE_ENUM: {
+      auto object =
+          internal::ReflectionAccessor::GetRepeatedEnum(reflection, field, msg);
       if (field->file()->syntax() == FileDescriptor::SYNTAX_PROTO3) {
-        auto object =
-            internal::ReflectionAccessor::GetOffset(msg, field, reflection);
         return {internal::PackedEnumParser, object};
       } else {
+        GOOGLE_CHECK_EQ(field->file()->options().cc_api_version(), 2);
         ctx->extra_parse_data().SetEnumValidatorArg(
             ReflectiveValidator, field->enum_type(),
             reflection->MutableUnknownFields(msg), field->number());
-        auto object =
-            internal::ReflectionAccessor::GetOffset(msg, field, reflection);
         return {internal::PackedValidEnumParserArg, object};
       }
     }
@@ -303,15 +311,12 @@ ParseClosure GetPackedField(const FieldDescriptor* field, Message* msg,
 }
 
 ParseClosure GetLenDelim(int field_number, const FieldDescriptor* field,
-                         Message* msg, UnknownFieldSet* unknown,
-                         const Reflection* reflection,
+                         Message* msg, const Reflection* reflection,
                          internal::ParseContext* ctx) {
-  if (field == nullptr || WireFormat::WireTypeForFieldType(field->type()) !=
-                              WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-    if (field && field->is_packable()) {
-      return GetPackedField(field, msg, reflection, ctx);
-    }
-    return {internal::StringParser, unknown->AddLengthDelimited(field_number)};
+  if (WireFormat::WireTypeForFieldType(field->type()) !=
+      WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+    ABSL_ASSERT(field->is_packable());
+    return GetPackedField(field, msg, reflection, ctx);
   }
   enum { kNone = 0, kVerify, kStrict } utf8_level = kNone;
   internal::ParseFunc string_parsers[] = {internal::StringParser,
@@ -334,7 +339,7 @@ ParseClosure GetLenDelim(int field_number, const FieldDescriptor* field,
         ctx->extra_parse_data().SetFieldName(field->full_name().c_str());
         utf8_level = kVerify;
       }
-      GOOGLE_FALLTHROUGH_INTENDED;
+      FALLTHROUGH_INTENDED;
     case FieldDescriptor::TYPE_BYTES: {
       if (field->is_repeated()) {
         int index = reflection->FieldSize(*msg, field);
@@ -383,10 +388,11 @@ ParseClosure GetLenDelim(int field_number, const FieldDescriptor* field,
     }
     case FieldDescriptor::TYPE_MESSAGE: {
       Message* object;
+      auto factory = ctx->extra_parse_data().factory;
       if (field->is_repeated()) {
-        object = reflection->AddMessage(msg, field, nullptr);
+        object = reflection->AddMessage(msg, field, factory);
       } else {
-        object = reflection->MutableMessage(msg, field, nullptr);
+        object = reflection->MutableMessage(msg, field, factory);
       }
       return {object->_ParseFunc(), object};
     }
@@ -395,77 +401,8 @@ ParseClosure GetLenDelim(int field_number, const FieldDescriptor* field,
   }
 }
 
-const char* ReflectiveParseMessageSetItem(const char* begin, const char* end,
-                                          void* object,
-                                          internal::ParseContext* ctx) {
-  ParseClosure child;
-  auto msg = static_cast<Message*>(object);
-  auto reflection = msg->GetReflection();
-  uint32 size;
-  auto ptr = begin;
-  while (ptr < end) {
-    uint32 tag = *ptr++;
-    if (tag == WireFormatLite::kMessageSetTypeIdTag) {
-      uint32 type_id;
-      ptr = Varint::Parse32(ptr, &type_id);
-      if (!ptr) goto error;
-
-      auto field = reflection->FindKnownExtensionByNumber(type_id);
-
-      if (ctx->extra_parse_data().payload.empty()) {
-        tag = *ptr++;
-        if (tag == WireFormatLite::kMessageSetMessageTag) {
-          ptr = Varint::Parse32Inline(ptr, &size);
-          if (!ptr) goto error;
-          child = GetLenDelim(type_id * 8 + 2, field, msg,
-                              reflection->MutableUnknownFields(msg), reflection,
-                              ctx);
-          if (size > end - ptr) goto len_delim_till_end;
-          auto newend = ptr + size;
-          if (!ctx->ParseExactRange(child, ptr, newend)) goto error;
-          ptr = newend;
-        } else {
-          goto error;
-        }
-      } else {
-        GOOGLE_LOG(FATAL) << "Wrong order";
-      }
-    } else if (tag == WireFormatLite::kMessageSetItemEndTag) {
-      if (!ctx->ValidEndGroup(tag)) goto error;
-      break;
-    } else if (tag == WireFormatLite::kMessageSetMessageTag) {
-      uint32 size;
-      ptr = Varint::Parse32Inline(ptr, &size);
-      if (!ptr) goto error;
-      child = {internal::StringParser, &ctx->extra_parse_data().payload};
-      if (size > end - ptr) goto len_delim_till_end;
-      auto newend = ptr + size;
-      if (!ctx->ParseExactRange(child, ptr, newend)) goto error;
-      ptr = newend;
-    } else {
-      GOOGLE_LOG(FATAL) << "Unknown message set item tag";
-    }
-  }
-  return ptr;
-error:
-  return nullptr;
-len_delim_till_end:
-  return ctx->StoreAndTailCall(ptr, end, {ReflectiveParseMessageSetItem, msg},
-                               child, size);
-}
-
 ParseClosure GetGroup(int field_number, const FieldDescriptor* field,
-                      Message* msg, UnknownFieldSet* unknown,
-                      const Reflection* reflection) {
-  if (field == nullptr && field_number == 1 &&
-      msg->GetDescriptor()->options().message_set_wire_format()) {
-    return {ReflectiveParseMessageSetItem, msg};
-  }
-  if (field == nullptr || WireFormat::WireTypeForFieldType(field->type()) !=
-                              WireFormatLite::WIRETYPE_START_GROUP) {
-    return {internal::UnknownGroupParse, unknown->AddGroup(field_number)};
-  }
-
+                      Message* msg, const Reflection* reflection) {
   Message* object;
   if (field->is_repeated()) {
     object = reflection->AddMessage(msg, field, nullptr);
@@ -477,124 +414,152 @@ ParseClosure GetGroup(int field_number, const FieldDescriptor* field,
 
 const char* Message::_InternalParse(const char* begin, const char* end,
                                     void* object, internal::ParseContext* ctx) {
-  auto msg = static_cast<Message*>(object);
-  const Descriptor* descriptor = msg->GetDescriptor();
-  const Reflection* reflection = msg->GetReflection();
-  auto unknown = reflection->MutableUnknownFields(msg);
-  GOOGLE_DCHECK(descriptor);
-  GOOGLE_DCHECK(reflection);
+  class ReflectiveFieldParser {
+   public:
+    ReflectiveFieldParser(Message* msg, internal::ParseContext* ctx)
+        : ReflectiveFieldParser(msg, ctx, false) {}
 
-  GOOGLE_DCHECK(begin <= end);
-  uint32 size;
-  internal::ParseFunc parser_till_end;
-  uint32 tag;
-  int depth;
-  auto ptr = begin;
-  while (ptr < end) {
-    ptr = Varint::Parse32Inline(ptr, &tag);
-    if (ptr == nullptr) return nullptr;
-    if ((tag >> 3) == 0) return nullptr;
-    const FieldDescriptor* field = nullptr;
-
-    int field_number = WireFormatLite::GetTagFieldNumber(tag);
-    field = descriptor->FindFieldByNumber(field_number);
-
-    // If that failed, check if the field is an extension.
-    if (field == nullptr && descriptor->IsExtensionNumber(field_number)) {
-      field = reflection->FindKnownExtensionByNumber(field_number);
+    void AddVarint(uint32 num, uint64 value) {
+      if (is_item_ && num == 2) {
+        if (!ctx_->extra_parse_data().payload.empty()) {
+          auto field = Field(value, 2);
+          if (field && field->message_type()) {
+            auto child = reflection_->MutableMessage(msg_, field);
+            // TODO(gerbens) signal error
+            child->ParsePartialFromString(ctx_->extra_parse_data().payload);
+          } else {
+            MutableUnknown()->AddLengthDelimited(value)->swap(
+                ctx_->extra_parse_data().payload);
+          }
+          return;
+        }
+        ctx_->extra_parse_data().field_number = value;
+        return;
+      }
+      auto field = Field(num, 0);
+      if (field) {
+        SetField(value, field, msg_, reflection_);
+      } else {
+        MutableUnknown()->AddVarint(num, value);
+      }
+    }
+    void AddFixed64(uint32 num, uint64 value) {
+      auto field = Field(num, 1);
+      if (field) {
+        SetField(value, field, msg_, reflection_);
+      } else {
+        MutableUnknown()->AddFixed64(num, value);
+      }
+    }
+    ParseClosure AddLengthDelimited(uint32 num, uint32) {
+      if (is_item_ && num == 3) {
+        int type_id = ctx_->extra_parse_data().field_number;
+        if (type_id == 0) {
+          return {internal::StringParser, &ctx_->extra_parse_data().payload};
+        }
+        ctx_->extra_parse_data().field_number = 0;
+        num = type_id;
+      }
+      auto field = Field(num, 2);
+      if (field) {
+        return GetLenDelim(num, field, msg_, reflection_, ctx_);
+      } else {
+        return {internal::StringParser,
+                MutableUnknown()->AddLengthDelimited(num)};
+      }
+    }
+    ParseClosure StartGroup(uint32 num) {
+      if (!is_item_ && descriptor_->options().message_set_wire_format() &&
+          num == 1) {
+        ctx_->extra_parse_data().payload.clear();
+        ctx_->extra_parse_data().field_number = 0;
+        return {ItemParser, msg_};
+      }
+      auto field = Field(num, 3);
+      if (field) {
+        return GetGroup(num, field, msg_, reflection_);
+      } else {
+        return {internal::UnknownGroupParse, MutableUnknown()->AddGroup(num)};
+      }
+    }
+    void EndGroup(uint32 num) {}
+    void AddFixed32(uint32 num, uint32 value) {
+      auto field = Field(num, 5);
+      if (field) {
+        SetField(value, field, msg_, reflection_);
+      } else {
+        MutableUnknown()->AddFixed32(num, value);
+      }
     }
 
-    // if (field) GOOGLE_LOG(ERROR) << "Encountered field " << field->name();
+   private:
+    Message* msg_;
+    const Descriptor* descriptor_;
+    const Reflection* reflection_;
+    internal::ParseContext* ctx_;
+    UnknownFieldSet* unknown_ = nullptr;
+    bool is_item_ = false;
 
-    switch (tag & 7) {
-      case 0: {
-        uint64 val;
-        ptr = Varint::Parse64(ptr, &val);
-        if (!ptr) goto error;
-        if (field == nullptr ||
-            WireFormat::WireTypeForFieldType(field->type()) != 0) {
-          unknown->AddVarint(field_number, val);
-          break;
-        }
-        SetField(val, field, msg, reflection);
-        break;
-      }
-      case 1: {
-        uint64 val = UNALIGNED_LOAD64(ptr);
-        ptr = ptr + 8;
-        if (field == nullptr ||
-            WireFormat::WireTypeForFieldType(field->type()) != 1) {
-          unknown->AddFixed64(field_number, val);
-          break;
-        }
-        SetField(val, field, msg, reflection);
-        break;
-      }
-      case 2: {
-        ptr = Varint::Parse32Inline(ptr, &size);
-        if (!ptr) goto error;
-        ParseClosure child =
-            GetLenDelim(field_number, field, msg, unknown, reflection, ctx);
-        parser_till_end = child.func;
-        object = child.object;
-        if (size > end - ptr) goto len_delim_till_end;
-        auto newend = ptr + size;
-        if (!ctx->ParseExactRange(child, ptr, newend)) goto error;
-        ptr = newend;
-        break;
-      }
-      case 3: {
-        if (!ctx->PrepareGroup(tag, &depth)) goto error;
-
-        ParseClosure child =
-            GetGroup(field_number, field, msg, unknown, reflection);
-        parser_till_end = child.func;
-        object = child.object;
-
-        if (ptr < end) ptr = child(ptr, end, ctx);
-        if (!ptr) goto error;
-        if (ctx->GroupContinues(depth)) goto group_continues;
-        break;
-      }
-      case 4: {
-        if (!ctx->ValidEndGroup(tag)) goto error;
-        return ptr;
-      }
-      case 5: {
-        uint32 val = UNALIGNED_LOAD32(ptr);
-        ptr = ptr + 4;
-        if (field == nullptr ||
-            WireFormat::WireTypeForFieldType(field->type()) != 5) {
-          unknown->AddFixed64(field_number, val);
-          break;
-        }
-        SetField(val, field, msg, reflection);
-        break;
-      }
-      default:
-        goto error;
+    ReflectiveFieldParser(Message* msg, internal::ParseContext* ctx,
+                          bool is_item)
+        : msg_(msg),
+          descriptor_(msg->GetDescriptor()),
+          reflection_(msg->GetReflection()),
+          ctx_(ctx),
+          is_item_(is_item) {
+      GOOGLE_CHECK(descriptor_) << typeid(*this).name();
+      GOOGLE_CHECK(reflection_) << descriptor_->name() << " " << typeid(*this).name();
     }
-  }
-  return ptr;
-error:
-  return nullptr;
-len_delim_till_end:
-  // Length delimited field crosses end
-  return ctx->StoreAndTailCall(ptr, end, {Message::_InternalParse, msg},
-                               {parser_till_end, object}, size);
-group_continues:
-  GOOGLE_DCHECK(ptr >= end);
-  // Group crossed end and must be continued. Either this a parse failure
-  // or we need to resume on the next chunk and thus save the state.
-  ctx->StoreGroup({Message::_InternalParse, msg}, {parser_till_end, object},
-                  depth);
-  return ptr;
+
+    const FieldDescriptor* Field(int num, int wire_type) {
+      auto field = descriptor_->FindFieldByNumber(num);
+
+      // If that failed, check if the field is an extension.
+      if (field == nullptr && descriptor_->IsExtensionNumber(num)) {
+        const DescriptorPool* pool = ctx_->extra_parse_data().pool;
+        if (pool == NULL) {
+          field = reflection_->FindKnownExtensionByNumber(num);
+        } else {
+          field = pool->FindExtensionByNumber(descriptor_, num);
+        }
+      }
+      if (field == nullptr) return nullptr;
+
+      if (internal::WireFormat::WireTypeForFieldType(field->type()) !=
+          wire_type) {
+        if (field->is_packable()) {
+          if (wire_type ==
+              internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+            return field;
+          }
+        }
+        return nullptr;
+      }
+      return field;
+    }
+
+    UnknownFieldSet* MutableUnknown() {
+      if (unknown_) return unknown_;
+      return unknown_ = reflection_->MutableUnknownFields(msg_);
+    }
+
+    static const char* ItemParser(const char* begin, const char* end,
+                                  void* object, internal::ParseContext* ctx) {
+      auto msg = static_cast<Message*>(object);
+      ReflectiveFieldParser field_parser(msg, ctx, true);
+      return internal::WireFormatParser({ItemParser, object}, field_parser,
+                                        begin, end, ctx);
+    }
+  };
+
+  ReflectiveFieldParser field_parser(static_cast<Message*>(object), ctx);
+  return internal::WireFormatParser({_InternalParse, object}, field_parser,
+                                    begin, end, ctx);
 }
 #endif  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 
 
-void Message::SerializeWithCachedSizes(
-    io::CodedOutputStream* output) const {
+void Message::SerializeWithCachedSizes(io::CodedOutputStream* output) const {
   const internal::SerializationTable* table =
       static_cast<const internal::SerializationTable*>(InternalGetTable());
   if (table == 0) {
@@ -653,51 +618,50 @@ void Reflection::AddAllocatedMessage(Message* /* message */,
                                      const FieldDescriptor* /*field */,
                                      Message* /* new_entry */) const {}
 
-#define HANDLE_TYPE(TYPE, CPPTYPE, CTYPE)                             \
-template<>                                                            \
-const RepeatedField<TYPE>& Reflection::GetRepeatedField<TYPE>(        \
-    const Message& message, const FieldDescriptor* field) const {     \
-  return *static_cast<RepeatedField<TYPE>* >(                         \
-      MutableRawRepeatedField(const_cast<Message*>(&message),         \
-                          field, CPPTYPE, CTYPE, NULL));              \
-}                                                                     \
-                                                                      \
-template<>                                                            \
-RepeatedField<TYPE>* Reflection::MutableRepeatedField<TYPE>(          \
-    Message* message, const FieldDescriptor* field) const {           \
-  return static_cast<RepeatedField<TYPE>* >(                          \
-      MutableRawRepeatedField(message, field, CPPTYPE, CTYPE, NULL)); \
-}
+#define HANDLE_TYPE(TYPE, CPPTYPE, CTYPE)                               \
+  template <>                                                           \
+  const RepeatedField<TYPE>& Reflection::GetRepeatedField<TYPE>(        \
+      const Message& message, const FieldDescriptor* field) const {     \
+    return *static_cast<RepeatedField<TYPE>*>(MutableRawRepeatedField(  \
+        const_cast<Message*>(&message), field, CPPTYPE, CTYPE, NULL));  \
+  }                                                                     \
+                                                                        \
+  template <>                                                           \
+  RepeatedField<TYPE>* Reflection::MutableRepeatedField<TYPE>(          \
+      Message * message, const FieldDescriptor* field) const {          \
+    return static_cast<RepeatedField<TYPE>*>(                           \
+        MutableRawRepeatedField(message, field, CPPTYPE, CTYPE, NULL)); \
+  }
 
-HANDLE_TYPE(int32,  FieldDescriptor::CPPTYPE_INT32,  -1);
-HANDLE_TYPE(int64,  FieldDescriptor::CPPTYPE_INT64,  -1);
+HANDLE_TYPE(int32, FieldDescriptor::CPPTYPE_INT32, -1);
+HANDLE_TYPE(int64, FieldDescriptor::CPPTYPE_INT64, -1);
 HANDLE_TYPE(uint32, FieldDescriptor::CPPTYPE_UINT32, -1);
 HANDLE_TYPE(uint64, FieldDescriptor::CPPTYPE_UINT64, -1);
-HANDLE_TYPE(float,  FieldDescriptor::CPPTYPE_FLOAT,  -1);
+HANDLE_TYPE(float, FieldDescriptor::CPPTYPE_FLOAT, -1);
 HANDLE_TYPE(double, FieldDescriptor::CPPTYPE_DOUBLE, -1);
-HANDLE_TYPE(bool,   FieldDescriptor::CPPTYPE_BOOL,   -1);
+HANDLE_TYPE(bool, FieldDescriptor::CPPTYPE_BOOL, -1);
 
 
 #undef HANDLE_TYPE
 
-void* Reflection::MutableRawRepeatedString(
-    Message* message, const FieldDescriptor* field, bool is_string) const {
+void* Reflection::MutableRawRepeatedString(Message* message,
+                                           const FieldDescriptor* field,
+                                           bool is_string) const {
   return MutableRawRepeatedField(message, field,
-      FieldDescriptor::CPPTYPE_STRING, FieldOptions::STRING, NULL);
+                                 FieldDescriptor::CPPTYPE_STRING,
+                                 FieldOptions::STRING, NULL);
 }
 
 
-MapIterator Reflection::MapBegin(
-    Message* message,
-    const FieldDescriptor* field) const {
+MapIterator Reflection::MapBegin(Message* message,
+                                 const FieldDescriptor* field) const {
   GOOGLE_LOG(FATAL) << "Unimplemented Map Reflection API.";
   MapIterator iter(message, field);
   return iter;
 }
 
-MapIterator Reflection::MapEnd(
-    Message* message,
-    const FieldDescriptor* field) const {
+MapIterator Reflection::MapEnd(Message* message,
+                               const FieldDescriptor* field) const {
   GOOGLE_LOG(FATAL) << "Unimplemented Map Reflection API.";
   MapIterator iter(message, field);
   return iter;
@@ -766,8 +730,8 @@ void GeneratedMessageFactory::RegisterFile(const char* file,
 void GeneratedMessageFactory::RegisterType(const Descriptor* descriptor,
                                            const Message* prototype) {
   GOOGLE_DCHECK_EQ(descriptor->file()->pool(), DescriptorPool::generated_pool())
-    << "Tried to register a non-generated type with the generated "
-       "type registry.";
+      << "Tried to register a non-generated type with the generated "
+         "type registry.";
 
   // This should only be called as a result of calling a file registration
   // function during GetPrototype(), in which case we already have locked
@@ -795,7 +759,8 @@ const Message* GeneratedMessageFactory::GetPrototype(const Descriptor* type) {
       FindPtrOrNull(file_map_, type->file()->name().c_str());
   if (registration_data == NULL) {
     GOOGLE_LOG(DFATAL) << "File appears to be in generated pool but wasn't "
-                   "registered: " << type->file()->name();
+                   "registered: "
+                << type->file()->name();
     return NULL;
   }
 
@@ -841,10 +806,10 @@ MessageFactory* Reflection::GetMessageFactory() const {
   return NULL;
 }
 
-void* Reflection::RepeatedFieldData(
-    Message* message, const FieldDescriptor* field,
-    FieldDescriptor::CppType cpp_type,
-    const Descriptor* message_type) const {
+void* Reflection::RepeatedFieldData(Message* message,
+                                    const FieldDescriptor* field,
+                                    FieldDescriptor::CppType cpp_type,
+                                    const Descriptor* message_type) const {
   GOOGLE_LOG(FATAL) << "Not implemented.";
   return NULL;
 }
@@ -896,7 +861,7 @@ template <>
 #if defined(_MSC_VER) && (_MSC_VER >= 1800)
 // Note: force noinline to workaround MSVC compiler bug with /Zc:inline, issue
 // #240
-GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE
+PROTOBUF_NOINLINE
 #endif
     Message*
     GenericTypeHandler<Message>::NewFromPrototype(const Message* prototype,
@@ -907,7 +872,7 @@ template <>
 #if defined(_MSC_VER) && (_MSC_VER >= 1800)
 // Note: force noinline to workaround MSVC compiler bug with /Zc:inline, issue
 // #240
-GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE
+PROTOBUF_NOINLINE
 #endif
     Arena*
     GenericTypeHandler<Message>::GetArena(Message* value) {
@@ -917,7 +882,7 @@ template <>
 #if defined(_MSC_VER) && (_MSC_VER >= 1800)
 // Note: force noinline to workaround MSVC compiler bug with /Zc:inline, issue
 // #240
-GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE
+PROTOBUF_NOINLINE
 #endif
     void*
     GenericTypeHandler<Message>::GetMaybeArenaPointer(Message* value) {

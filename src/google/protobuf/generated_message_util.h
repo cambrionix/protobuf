@@ -46,6 +46,7 @@
 
 #include <google/protobuf/stubs/logging.h>
 #include <google/protobuf/stubs/common.h>
+#include <google/protobuf/parse_context.h>
 #include <google/protobuf/has_bits.h>
 #include <google/protobuf/implicit_weak_message.h>
 #include <google/protobuf/map_entry_lite.h>
@@ -53,17 +54,13 @@
 #include <google/protobuf/stubs/once.h>  // Add direct dep on port for pb.cc
 #include <google/protobuf/port.h>
 #include <google/protobuf/wire_format_lite.h>
+#include <google/protobuf/stubs/strutil.h>
 
 #include <google/protobuf/port_def.inc>
 
 #ifdef SWIG
 #error "You cannot SWIG proto headers"
 #endif
-
-#if GOOGLE_PROTOBUF_ENABLE_MOMI_PARSER
-#include <google/protobuf/parse_context.h>
-#endif
-
 
 namespace google {
 namespace protobuf {
@@ -75,38 +72,10 @@ namespace io { class CodedInputStream; }
 namespace internal {
 
 
-// Returns the offset of the given field within the given aggregate type.
-// This is equivalent to the ANSI C offsetof() macro.  However, according
-// to the C++ standard, offsetof() only works on POD types, and GCC
-// enforces this requirement with a warning.  In practice, this rule is
-// unnecessarily strict; there is probably no compiler or platform on
-// which the offsets of the direct fields of a class are non-constant.
-// Fields inherited from superclasses *can* have non-constant offsets,
-// but that's not what this macro will be used for.
-#if defined(__clang__)
-// For Clang we use __builtin_offsetof() and suppress the warning,
-// to avoid Control Flow Integrity and UBSan vptr sanitizers from
-// crashing while trying to validate the invalid reinterpet_casts.
-#define GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TYPE, FIELD) \
-  _Pragma("clang diagnostic push")                                   \
-  _Pragma("clang diagnostic ignored \"-Winvalid-offsetof\"")         \
-  __builtin_offsetof(TYPE, FIELD)                                    \
-  _Pragma("clang diagnostic pop")
-#else
-// Note that we calculate relative to the pointer value 16 here since if we
-// just use zero, GCC complains about dereferencing a NULL pointer.  We
-// choose 16 rather than some other number just in case the compiler would
-// be confused by an unaligned pointer.
-#define GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TYPE, FIELD)      \
-  static_cast< ::google::protobuf::uint32>(reinterpret_cast<const char*>(                   \
-                             &reinterpret_cast<const TYPE*>(16)->FIELD) - \
-                         reinterpret_cast<const char*>(16))
-#endif
-
-LIBPROTOBUF_EXPORT void InitProtobufDefaults();
+PROTOBUF_EXPORT void InitProtobufDefaults();
 
 // This used by proto1
-LIBPROTOBUF_EXPORT inline const ::std::string& GetEmptyString() {
+PROTOBUF_EXPORT inline const ::std::string& GetEmptyString() {
   InitProtobufDefaults();
   return GetEmptyStringAlreadyInited();
 }
@@ -139,7 +108,7 @@ bool AllAreInitializedWeak(const RepeatedPtrField<T>& t) {
   return true;
 }
 
-struct LIBPROTOBUF_EXPORT FieldMetadata {
+struct PROTOBUF_EXPORT FieldMetadata {
   uint32 offset;  // offset of this field in the struct
   uint32 tag;     // field * 8 + wire_type
   // byte offset * 8 + bit_offset;
@@ -188,19 +157,23 @@ typedef void (*SpecialSerializer)(const uint8* base, uint32 offset, uint32 tag,
                                   uint32 has_offset,
                                   io::CodedOutputStream* output);
 
-LIBPROTOBUF_EXPORT void ExtensionSerializer(const uint8* base, uint32 offset, uint32 tag,
-                         uint32 has_offset, io::CodedOutputStream* output);
-LIBPROTOBUF_EXPORT void UnknownFieldSerializerLite(const uint8* base, uint32 offset, uint32 tag,
-                                uint32 has_offset,
-                                io::CodedOutputStream* output);
+PROTOBUF_EXPORT void ExtensionSerializer(const uint8* base, uint32 offset,
+                                         uint32 tag, uint32 has_offset,
+                                         io::CodedOutputStream* output);
+PROTOBUF_EXPORT void UnknownFieldSerializerLite(const uint8* base,
+                                                uint32 offset, uint32 tag,
+                                                uint32 has_offset,
+                                                io::CodedOutputStream* output);
 
 struct SerializationTable {
   int num_fields;
   const FieldMetadata* field_table;
 };
 
-LIBPROTOBUF_EXPORT void SerializeInternal(const uint8* base, const FieldMetadata* table,
-                       int32 num_fields, io::CodedOutputStream* output);
+PROTOBUF_EXPORT void SerializeInternal(const uint8* base,
+                                       const FieldMetadata* table,
+                                       int32 num_fields,
+                                       io::CodedOutputStream* output);
 
 inline void TableSerialize(const MessageLite& msg,
                            const SerializationTable* table,
@@ -290,10 +263,10 @@ void MapFieldSerializer(const uint8* base, uint32 offset, uint32 tag,
   }
 }
 
-LIBPROTOBUF_EXPORT MessageLite* DuplicateIfNonNullInternal(MessageLite* message);
-LIBPROTOBUF_EXPORT MessageLite* GetOwnedMessageInternal(Arena* message_arena,
-                                     MessageLite* submessage,
-                                     Arena* submessage_arena);
+PROTOBUF_EXPORT MessageLite* DuplicateIfNonNullInternal(MessageLite* message);
+PROTOBUF_EXPORT MessageLite* GetOwnedMessageInternal(Arena* message_arena,
+                                                     MessageLite* submessage,
+                                                     Arena* submessage_arena);
 
 template <typename T>
 T* DuplicateIfNonNull(T* message) {
@@ -315,7 +288,7 @@ T* GetOwnedMessage(Arena* message_arena, T* submessage,
 
 // Hide atomic from the public header and allow easy change to regular int
 // on platforms where the atomic might have a perf impact.
-class LIBPROTOBUF_EXPORT CachedSize {
+class PROTOBUF_EXPORT CachedSize {
  public:
   int Get() const { return size_.load(std::memory_order_relaxed); }
   void Set(int size) { size_.store(size, std::memory_order_relaxed); }
@@ -325,7 +298,7 @@ class LIBPROTOBUF_EXPORT CachedSize {
 
 // SCCInfo represents information of a strongly connected component of
 // mutual dependent messages.
-struct LIBPROTOBUF_EXPORT SCCInfoBase {
+struct PROTOBUF_EXPORT SCCInfoBase {
   // We use 0 for the Initialized state, because test eax,eax, jnz is smaller
   // and is subject to macro fusion.
   enum {
@@ -359,15 +332,16 @@ struct SCCInfo {
   SCCInfoBase* deps[N ? N : 1];
 };
 
-LIBPROTOBUF_EXPORT void InitSCCImpl(SCCInfoBase* scc);
+PROTOBUF_EXPORT void InitSCCImpl(SCCInfoBase* scc);
 
 inline void InitSCC(SCCInfoBase* scc) {
   auto status = scc->visit_status.load(std::memory_order_acquire);
-  if (GOOGLE_PREDICT_FALSE(status != SCCInfoBase::kInitialized)) InitSCCImpl(scc);
+  if (PROTOBUF_PREDICT_FALSE(status != SCCInfoBase::kInitialized))
+    InitSCCImpl(scc);
 }
 
-LIBPROTOBUF_EXPORT void DestroyMessage(const void* message);
-LIBPROTOBUF_EXPORT void DestroyString(const void* s);
+PROTOBUF_EXPORT void DestroyMessage(const void* message);
+PROTOBUF_EXPORT void DestroyString(const void* s);
 // Destroy (not delete) the message
 inline void OnShutdownDestroyMessage(const void* ptr) {
   OnShutdownRun(DestroyMessage, ptr);
@@ -376,6 +350,32 @@ inline void OnShutdownDestroyMessage(const void* ptr) {
 inline void OnShutdownDestroyString(const ::std::string* ptr) {
   OnShutdownRun(DestroyString, ptr);
 }
+
+#if GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
+
+inline void InlineGreedyStringParser(std::string* str, const char* begin, int size,
+                               ParseContext*) {
+  str->assign(begin, size);
+}
+
+
+inline bool StringCheck(const char* begin, int size, ParseContext* ctx) {
+  return true;
+}
+
+inline bool StringCheckUTF8(const char* begin, int size, ParseContext* ctx) {
+  return VerifyUTF8(StringPiece(begin, size), ctx);
+}
+
+inline bool StringCheckUTF8Verify(const char* begin, int size,
+                                  ParseContext* ctx) {
+#ifndef NDEBUG
+  VerifyUTF8(StringPiece(begin, size), ctx);
+#endif
+  return true;
+}
+
+#endif  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 
 }  // namespace internal
 }  // namespace protobuf

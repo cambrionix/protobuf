@@ -68,6 +68,8 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <google/protobuf/stubs/strutil.h>
 
+#include <google/protobuf/port_def.inc>
+
 #if PY_MAJOR_VERSION >= 3
   #define PyInt_AsLong PyLong_AsLong
   #define PyInt_FromLong PyLong_FromLong
@@ -583,10 +585,6 @@ static int VisitCompositeField(const FieldDescriptor* descriptor,
 // Returns -1 on error and 0 on success.
 template<class Visitor>
 int ForEachCompositeField(CMessage* self, Visitor visitor) {
-  Py_ssize_t pos = 0;
-  PyObject* key;
-  PyObject* field;
-
   // Visit normal fields.
   if (self->composite_fields) {
     for (CMessage::CompositeFieldsMap::iterator it =
@@ -642,7 +640,7 @@ void OutOfRangeError(PyObject* arg) {
 
 template<class RangeType, class ValueType>
 bool VerifyIntegerCastAndRange(PyObject* arg, ValueType value) {
-  if (GOOGLE_PREDICT_FALSE(value == -1 && PyErr_Occurred())) {
+  if (PROTOBUF_PREDICT_FALSE(value == -1 && PyErr_Occurred())) {
     if (PyErr_ExceptionMatches(PyExc_OverflowError)) {
       // Replace it with the same ValueError as pure python protos instead of
       // the default one.
@@ -651,7 +649,7 @@ bool VerifyIntegerCastAndRange(PyObject* arg, ValueType value) {
     }  // Otherwise propagate existing error.
     return false;
     }
-    if (GOOGLE_PREDICT_FALSE(!IsValidNumericCast<RangeType>(value))) {
+    if (PROTOBUF_PREDICT_FALSE(!IsValidNumericCast<RangeType>(value))) {
       OutOfRangeError(arg);
       return false;
     }
@@ -663,22 +661,22 @@ bool CheckAndGetInteger(PyObject* arg, T* value) {
   // The fast path.
 #if PY_MAJOR_VERSION < 3
   // For the typical case, offer a fast path.
-  if (GOOGLE_PREDICT_TRUE(PyInt_Check(arg))) {
+  if (PROTOBUF_PREDICT_TRUE(PyInt_Check(arg))) {
     long int_result = PyInt_AsLong(arg);
-    if (GOOGLE_PREDICT_TRUE(IsValidNumericCast<T>(int_result))) {
+    if (PROTOBUF_PREDICT_TRUE(IsValidNumericCast<T>(int_result))) {
       *value = static_cast<T>(int_result);
       return true;
     } else {
       OutOfRangeError(arg);
       return false;
     }
-    }
+  }
 #endif
   // This effectively defines an integer as "an object that can be cast as
   // an integer and can be used as an ordinal number".
   // This definition includes everything that implements numbers.Integral
   // and shouldn't cast the net too wide.
-    if (GOOGLE_PREDICT_FALSE(!PyIndex_Check(arg))) {
+    if (PROTOBUF_PREDICT_FALSE(!PyIndex_Check(arg))) {
       FormatTypeError(arg, "int, long");
       return false;
     }
@@ -695,7 +693,7 @@ bool CheckAndGetInteger(PyObject* arg, T* value) {
       // Unlike PyLong_AsLongLong, PyLong_AsUnsignedLongLong is very
       // picky about the exact type.
       PyObject* casted = PyNumber_Long(arg);
-      if (GOOGLE_PREDICT_FALSE(casted == nullptr)) {
+      if (PROTOBUF_PREDICT_FALSE(casted == nullptr)) {
         // Propagate existing error.
         return false;
         }
@@ -720,7 +718,7 @@ bool CheckAndGetInteger(PyObject* arg, T* value) {
       // Valid subclasses of numbers.Integral should have a __long__() method
       // so fall back to that.
       PyObject* casted = PyNumber_Long(arg);
-      if (GOOGLE_PREDICT_FALSE(casted == nullptr)) {
+      if (PROTOBUF_PREDICT_FALSE(casted == nullptr)) {
         // Propagate existing error.
         return false;
         }
@@ -746,7 +744,7 @@ template bool CheckAndGetInteger<uint64>(PyObject*, uint64*);
 
 bool CheckAndGetDouble(PyObject* arg, double* value) {
   *value = PyFloat_AsDouble(arg);
-  if (GOOGLE_PREDICT_FALSE(*value == -1 && PyErr_Occurred())) {
+  if (PROTOBUF_PREDICT_FALSE(*value == -1 && PyErr_Occurred())) {
     FormatTypeError(arg, "int, long, float");
     return false;
     }
@@ -1106,11 +1104,10 @@ static PyObject* GetIntegerEnumValue(const FieldDescriptor& descriptor,
 // needs to do this to make sure CMessages stay alive if they're still
 // referenced after deletion. Repeated scalar container doesn't need to worry.
 int InternalDeleteRepeatedField(
-    CMessage* self,
+    Message* message,
     const FieldDescriptor* field_descriptor,
     PyObject* slice,
     PyObject* cmessage_list) {
-  Message* message = self->message;
   Py_ssize_t length, from, to, step, slice_length;
   const Reflection* reflection = message->GetReflection();
   int min, max;
@@ -1188,7 +1185,7 @@ int InternalDeleteRepeatedField(
       CMessage* last_cmessage = reinterpret_cast<CMessage*>(
           PyList_GET_ITEM(cmessage_list, PyList_GET_SIZE(cmessage_list) - 1));
       repeated_composite_container::ReleaseLastTo(
-          self, field_descriptor, last_cmessage);
+          message, field_descriptor, last_cmessage);
       if (PySequence_DelItem(cmessage_list, -1) < 0) {
         return -1;
       }
@@ -1214,7 +1211,7 @@ int InitAttributes(CMessage* self, PyObject* args, PyObject* kwargs) {
   PyObject* name;
   PyObject* value;
   while (PyDict_Next(kwargs, &pos, &name, &value)) {
-    if (!PyString_Check(name)) {
+    if (!(PyString_Check(name) || PyUnicode_Check(name))) {
       PyErr_SetString(PyExc_ValueError, "Field name must be a string");
       return -1;
     }
@@ -1553,10 +1550,11 @@ const FieldDescriptor* FindFieldWithOneofs(
 }
 
 bool CheckHasPresence(const FieldDescriptor* field_descriptor, bool in_oneof) {
+  auto message_name = field_descriptor->containing_type()->name();
   if (field_descriptor->label() == FieldDescriptor::LABEL_REPEATED) {
     PyErr_Format(PyExc_ValueError,
-                 "Protocol message has no singular \"%s\" field.",
-                 field_descriptor->name().c_str());
+                 "Protocol message %s has no singular \"%s\" field.",
+                 message_name.c_str(), field_descriptor->name().c_str());
     return false;
   }
 
@@ -1564,8 +1562,8 @@ bool CheckHasPresence(const FieldDescriptor* field_descriptor, bool in_oneof) {
     // HasField() for a oneof *itself* isn't supported.
     if (in_oneof) {
       PyErr_Format(PyExc_ValueError,
-                   "Can't test oneof field \"%s\" for presence in proto3, use "
-                   "WhichOneof instead.",
+                   "Can't test oneof field \"%s.%s\" for presence in proto3, "
+                   "use WhichOneof instead.", message_name.c_str(),
                    field_descriptor->containing_oneof()->name().c_str());
       return false;
     }
@@ -1578,8 +1576,8 @@ bool CheckHasPresence(const FieldDescriptor* field_descriptor, bool in_oneof) {
     if (field_descriptor->cpp_type() != FieldDescriptor::CPPTYPE_MESSAGE) {
       PyErr_Format(
           PyExc_ValueError,
-          "Can't test non-submessage field \"%s\" for presence in proto3.",
-          field_descriptor->name().c_str());
+          "Can't test non-submessage field \"%s.%s\" for presence in proto3.",
+          message_name.c_str(), field_descriptor->name().c_str());
       return false;
     }
   }
@@ -1607,7 +1605,8 @@ PyObject* HasField(CMessage* self, PyObject* arg) {
       FindFieldWithOneofs(message, string(field_name, size), &is_in_oneof);
   if (field_descriptor == NULL) {
     if (!is_in_oneof) {
-      PyErr_Format(PyExc_ValueError, "Unknown field %s.", field_name);
+      PyErr_Format(PyExc_ValueError, "Protocol message %s has no field %s.",
+                   message->GetDescriptor()->name().c_str(), field_name);
       return NULL;
     } else {
       Py_RETURN_FALSE;
@@ -1808,13 +1807,16 @@ PyObject* ClearFieldByDescriptor(
 }
 
 PyObject* ClearField(CMessage* self, PyObject* arg) {
-  if (!PyString_Check(arg)) {
+  if (!(PyString_Check(arg) || PyUnicode_Check(arg))) {
     PyErr_SetString(PyExc_TypeError, "field name must be a string");
     return NULL;
   }
 #if PY_MAJOR_VERSION < 3
-  const char* field_name = PyString_AS_STRING(arg);
-  Py_ssize_t size = PyString_GET_SIZE(arg);
+  char* field_name;
+  Py_ssize_t size;
+  if (PyString_AsStringAndSize(arg, &field_name, &size) < 0) {
+    return NULL;
+  }
 #else
   Py_ssize_t size;
   const char* field_name = PyUnicode_AsUTF8AndSize(arg, &size);
@@ -2136,6 +2138,7 @@ static PyObject* MergeFromString(CMessage* self, PyObject* arg) {
       reinterpret_cast<const uint8*>(data), data_length);
   if (allow_oversize_protos) {
     input.SetTotalBytesLimit(INT_MAX, INT_MAX);
+    input.SetRecursionLimit(INT_MAX);
   }
   PyMessageFactory* factory = GetFactoryForMessage(self);
   input.SetExtensionRegistry(factory->pool->pool, factory->message_factory);
@@ -2818,8 +2821,6 @@ PyObject* GetFieldValue(CMessage* self,
     }
   }
 
-  const Descriptor* message_descriptor =
-      (reinterpret_cast<CMessageClass*>(Py_TYPE(self)))->message_descriptor;
   if (self->message->GetDescriptor() != field_descriptor->containing_type()) {
     PyErr_Format(PyExc_TypeError,
                  "descriptor to field '%s' doesn't apply to '%s' object",

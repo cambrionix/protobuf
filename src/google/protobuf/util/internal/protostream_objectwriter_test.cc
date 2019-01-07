@@ -58,7 +58,6 @@
 #include <gtest/gtest.h>
 
 
-
 namespace google {
 namespace protobuf {
 namespace util {
@@ -270,7 +269,7 @@ TEST_P(ProtoStreamObjectWriterTest, CustomJsonName) {
 }
 
 // Test that two messages can have different fields mapped to the same JSON
-// name. See: https://github.com/google/protobuf/issues/1415
+// name. See: https://github.com/protocolbuffers/protobuf/issues/1415
 TEST_P(ProtoStreamObjectWriterTest, ConflictingJsonName) {
   ResetTypeInfo(TestJsonName1::descriptor());
   TestJsonName1 message1;
@@ -917,6 +916,22 @@ TEST_P(ProtoStreamObjectWriterTest, IgnoreUnknownListAtPublisher) {
       ->EndList()
       ->EndObject()
       ->RenderString("title", "Brainwashing")
+      ->EndObject();
+  CheckOutput(expected);
+}
+
+TEST_P(ProtoStreamObjectWriterTest,
+       IgnoreUnknownFieldsDontIgnoreUnknownEnumValues) {
+  ResetTypeInfo(Proto3Message::descriptor());
+
+  Proto3Message expected;
+  EXPECT_CALL(
+      listener_,
+      InvalidValue(_, StringPiece("TYPE_ENUM"),
+                   StringPiece("\"someunknownvalueyouwillneverknow\"")))
+      .With(Args<0>(HasObjectLocation("enum_value")));
+  ow_->StartObject("")
+      ->RenderString("enumValue", "someunknownvalueyouwillneverknow")
       ->EndObject();
   CheckOutput(expected);
 }

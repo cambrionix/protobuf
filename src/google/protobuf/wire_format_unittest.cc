@@ -49,7 +49,10 @@
 #include <google/protobuf/testing/googletest.h>
 #include <gtest/gtest.h>
 #include <google/protobuf/stubs/casts.h>
+#include <google/protobuf/stubs/strutil.h>
 #include <google/protobuf/stubs/stl_util.h>
+
+#include <google/protobuf/port_def.inc>
 
 namespace google {
 namespace protobuf {
@@ -665,8 +668,8 @@ TEST(WireFormatTest, UnknownFieldRecursionLimit) {
 
 TEST(WireFormatTest, ZigZag) {
 // avoid line-wrapping
-#define LL(x) GOOGLE_LONGLONG(x)
-#define ULL(x) GOOGLE_ULONGLONG(x)
+#define LL(x) PROTOBUF_LONGLONG(x)
+#define ULL(x) PROTOBUF_ULONGLONG(x)
 #define ZigZagEncode32(x) WireFormatLite::ZigZagEncode32(x)
 #define ZigZagDecode32(x) WireFormatLite::ZigZagDecode32(x)
 #define ZigZagEncode64(x) WireFormatLite::ZigZagEncode64(x)
@@ -1146,10 +1149,6 @@ bool ReadMessage(const string &wire_buffer, T *message) {
   return message->ParseFromArray(wire_buffer.data(), wire_buffer.size());
 }
 
-bool StartsWith(const string& s, const string& prefix) {
-  return s.substr(0, prefix.length()) == prefix;
-}
-
 class Utf8ValidationTest : public ::testing::Test {
  protected:
   Utf8ValidationTest() {}
@@ -1170,11 +1169,12 @@ TEST_F(Utf8ValidationTest, WriteInvalidUTF8String) {
   }
 #ifdef GOOGLE_PROTOBUF_UTF8_VALIDATION_ENABLED
   ASSERT_EQ(1, errors.size());
-  EXPECT_TRUE(StartsWith(errors[0],
-                         "String field 'protobuf_unittest.OneString.data' "
-                         "contains invalid UTF-8 data when "
-                         "serializing a protocol buffer. Use the "
-                         "'bytes' type if you intend to send raw bytes."));
+  EXPECT_TRUE(
+      HasPrefixString(errors[0],
+                       "String field 'protobuf_unittest.OneString.data' "
+                       "contains invalid UTF-8 data when "
+                       "serializing a protocol buffer. Use the "
+                       "'bytes' type if you intend to send raw bytes."));
 #else
   ASSERT_EQ(0, errors.size());
 #endif  // GOOGLE_PROTOBUF_UTF8_VALIDATION_ENABLED
@@ -1194,11 +1194,12 @@ TEST_F(Utf8ValidationTest, ReadInvalidUTF8String) {
   }
 #ifdef GOOGLE_PROTOBUF_UTF8_VALIDATION_ENABLED
   ASSERT_EQ(1, errors.size());
-  EXPECT_TRUE(StartsWith(errors[0],
-                         "String field 'protobuf_unittest.OneString.data' "
-                         "contains invalid UTF-8 data when "
-                         "parsing a protocol buffer. Use the "
-                         "'bytes' type if you intend to send raw bytes."));
+  EXPECT_TRUE(
+      HasPrefixString(errors[0],
+                       "String field 'protobuf_unittest.OneString.data' "
+                       "contains invalid UTF-8 data when "
+                       "parsing a protocol buffer. Use the "
+                       "'bytes' type if you intend to send raw bytes."));
 
 #else
   ASSERT_EQ(0, errors.size());
@@ -1297,10 +1298,11 @@ TEST_F(Utf8ValidationTest, OldVerifyUTF8String) {
   }
 #ifdef GOOGLE_PROTOBUF_UTF8_VALIDATION_ENABLED
   ASSERT_EQ(1, errors.size());
-  EXPECT_TRUE(StartsWith(errors[0],
-                         "String field contains invalid UTF-8 data when "
-                         "serializing a protocol buffer. Use the "
-                         "'bytes' type if you intend to send raw bytes."));
+  EXPECT_TRUE(
+      HasPrefixString(errors[0],
+                       "String field contains invalid UTF-8 data when "
+                       "serializing a protocol buffer. Use the "
+                       "'bytes' type if you intend to send raw bytes."));
 #else
   ASSERT_EQ(0, errors.size());
 #endif

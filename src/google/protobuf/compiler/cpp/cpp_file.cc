@@ -318,13 +318,11 @@ void FileGenerator::DoIncludeFile(const string& google3_name, bool do_export,
     path = StringReplace(path, "internal/", "", false);
     path = StringReplace(path, "proto/", "", false);
     path = StringReplace(path, "public/", "", false);
-    if (options_.opensource_include_paths) {
+    if (options_.runtime_include_base.empty()) {
       format("#include <google/protobuf/$1$>", path);
     } else {
-      format(
-          "#include "
-          "\"third_party/protobuf/testing/extracted/src/google/protobuf/$1$\"",
-          path);
+      format("#include \"$1$google/protobuf/$2$\"",
+             options_.runtime_include_base, path);
     }
   } else {
     format("#include \"$1$\"", google3_name);
@@ -344,10 +342,10 @@ string FileGenerator::CreateHeaderInclude(const string& basename,
 
   if (options_.opensource_runtime) {
     if (IsWellKnownMessage(file)) {
-      if (options_.opensource_include_paths) {
+      if (options_.runtime_include_base.empty()) {
         use_system_include = true;
       } else {
-        name = "third_party/protobuf/testing/extracted/src/" + basename;
+        name = options_.runtime_include_base + basename;
       }
     }
   }
@@ -423,20 +421,6 @@ void FileGenerator::GenerateSourceIncludes(io::Printer* printer) {
       string dependency = basename + extension;
       format("#include \"$1$\"\n", dependency);
     }
-  }
-
-  // TODO(gerbens) Remove this when all code in google is using the same
-  // proto library. This is a temporary hack to force build errors if
-  // the proto library is compiled with GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS
-  // and is also linking internal proto2. This is to prevent regressions while
-  // we work cleaning up the code base. After this is completed and we have
-  // one proto lib all code uses this should be removed.
-  if (options_.opensource_runtime) {
-    format(
-        "// This is a temporary google only hack\n"
-        "#ifdef GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS\n"
-        "#include \"third_party/protobuf/version.h\"\n"
-        "#endif\n");
   }
 
   format("// @@protoc_insertion_point(includes)\n");
@@ -702,6 +686,8 @@ void FileGenerator::GenerateSource(io::Printer* printer) {
   format(
       "\n"
       "// @@protoc_insertion_point(global_scope)\n");
+
+  IncludeFile("net/proto2/public/port_undef.inc", printer);
 }
 
 void FileGenerator::GenerateReflectionInitializationCode(io::Printer* printer) {
@@ -751,7 +737,7 @@ void FileGenerator::GenerateReflectionInitializationCode(io::Printer* printer) {
     format(
         "\n"
         "const $uint32$ $tablename$::offsets[] "
-        "$GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {\n");
+        "PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {\n");
     format.Indent();
     std::vector<std::pair<size_t, size_t> > pairs;
     pairs.reserve(message_generators_.size());
@@ -762,7 +748,7 @@ void FileGenerator::GenerateReflectionInitializationCode(io::Printer* printer) {
     format(
         "};\n"
         "static const ::$proto_ns$::internal::MigrationSchema schemas[] "
-        "$GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {\n");
+        "PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {\n");
     format.Indent();
     {
       int offset = 0;
@@ -796,10 +782,10 @@ void FileGenerator::GenerateReflectionInitializationCode(io::Printer* printer) {
         // MSVC doesn't like empty arrays, so we add a dummy.
         "const $uint32$ $tablename$::offsets[1] = {};\n"
         "static constexpr ::$proto_ns$::internal::MigrationSchema* schemas = "
-        "NULL;"
+        "nullptr;"
         "\n"
         "static constexpr ::$proto_ns$::Message* const* "
-        "file_default_instances = NULL;\n"
+        "file_default_instances = nullptr;\n"
         "\n");
   }
 
@@ -819,36 +805,56 @@ void FileGenerator::GenerateReflectionInitializationCode(io::Printer* printer) {
       "\n",
       message_generators_.size());
 
-  // Now generate the AddDescriptors() function.
-  format(
-      "::$proto_ns$::internal::DescriptorTable $1$ = {\n"
-      "  false, $init_defaults$, \n",
-      UniqueName("descriptor_table", file_, options_));
-  format.Indent();
-
   // Embed the descriptor.  We simply serialize the entire
-  // FileDescriptorProto
-  // and embed it as a string literal, which is parsed and built into real
-  // descriptors at initialization time.
+  // FileDescriptorProto/ and embed it as a string literal, which is parsed and
+  // built into real descriptors at initialization time.
+  const string protodef_name =
+      UniqueName("descriptor_table_protodef", file_, options_);
+  format( "const char $1$[] =\n", protodef_name);
+  format.Indent();
   FileDescriptorProto file_proto;
   file_->CopyTo(&file_proto);
   string file_data;
   file_proto.SerializeToString(&file_data);
 
   {
-    // Only write 40 bytes per line.
-    static const int kBytesPerLine = 40;
-    for (int i = 0; i < file_data.size(); i += kBytesPerLine) {
-      format(
-          "\"$1$\"\n",
-          EscapeTrigraphs(CEscape(file_data.substr(i, kBytesPerLine))));
+    if (file_data.size() > 65535) {
+      // Workaround for MSVC: "Error C1091: compiler limit: string exceeds
+      // 65535 bytes in length". Declare a static array of chars rather than
+      // use a string literal. Only write 25 bytes per line.
+      static const int kBytesPerLine = 25;
+      format("{ ");
+      for (int i = 0; i < file_data.size();) {
+        for (int j = 0; j < kBytesPerLine && i < file_data.size(); ++i, ++j) {
+          format("'$1$', ", CEscape(file_data.substr(i, 1)));
+        }
+        format("\n");
+      }
+      format("'\\0' }");  // null-terminate
+    } else {
+      // Only write 40 bytes per line.
+      static const int kBytesPerLine = 40;
+      for (int i = 0; i < file_data.size(); i += kBytesPerLine) {
+        format(
+            "\"$1$\"\n",
+            EscapeTrigraphs(CEscape(file_data.substr(i, kBytesPerLine))));
+      }
     }
+    format(";\n");
   }
-
   format.Outdent();
+
+  // Now generate the AddDescriptors() function.
+  format(
+      "::$proto_ns$::internal::DescriptorTable $1$ = {\n"
+      "  false, $init_defaults$, \n"
+      "  $2$,\n",
+      UniqueName("descriptor_table", file_, options_),
+      protodef_name);
+
   const int num_deps = file_->dependency_count();
   format(
-      ",\n  \"$filename$\", &$assign_desc_table$, $1$,\n"
+      "  \"$filename$\", &$assign_desc_table$, $1$,\n"
       "};\n\n"
       "void $add_descriptors$() {\n"
       "  static constexpr ::$proto_ns$::internal::InitFunc deps[$2$] =\n"
@@ -958,7 +964,7 @@ void FileGenerator::GenerateTables(io::Printer* printer) {
     format(
         "PROTOBUF_CONSTEXPR_VAR ::$proto_ns$::internal::ParseTableField\n"
         "    const $tablename$::entries[] "
-        "$GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {\n");
+        "PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {\n");
     format.Indent();
 
     std::vector<size_t> entries;
@@ -981,7 +987,7 @@ void FileGenerator::GenerateTables(io::Printer* printer) {
         "PROTOBUF_CONSTEXPR_VAR "
         "::$proto_ns$::internal::AuxillaryParseTableField\n"
         "    const $tablename$::aux[] "
-        "$GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {\n");
+        "PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {\n");
     format.Indent();
 
     std::vector<size_t> aux_entries;
@@ -1001,7 +1007,7 @@ void FileGenerator::GenerateTables(io::Printer* printer) {
         "};\n"
         "PROTOBUF_CONSTEXPR_VAR ::$proto_ns$::internal::ParseTable const\n"
         "    $tablename$::schema[] "
-        "$GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {\n");
+        "PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {\n");
     format.Indent();
 
     size_t offset = 0;
@@ -1013,7 +1019,7 @@ void FileGenerator::GenerateTables(io::Printer* printer) {
     }
 
     if (message_generators_.empty()) {
-      format("{ NULL, NULL, 0, -1, -1, false },\n");
+      format("{ nullptr, nullptr, 0, -1, -1, false },\n");
     }
 
     format.Outdent();
@@ -1199,25 +1205,25 @@ void FileGenerator::GenerateLibraryIncludes(io::Printer* printer) {
   }
 
   if (options_.opensource_runtime) {
-    DoIncludeFile("net/proto2/public/stubs/common.h", false, printer);
-
     // Verify the protobuf library header version is compatible with the protoc
     // version before going any further.
+    IncludeFile("net/proto2/public/port_def.inc", printer);
     format(
-        "#if GOOGLE_PROTOBUF_VERSION < $1$\n"
+        "#if PROTOBUF_VERSION < $1$\n"
         "#error This file was generated by a newer version of protoc which is\n"
         "#error incompatible with your Protocol Buffer headers. Please update\n"
         "#error your headers.\n"
         "#endif\n"
-        "#if $2$ < GOOGLE_PROTOBUF_MIN_PROTOC_VERSION\n"
+        "#if $2$ < PROTOBUF_MIN_PROTOC_VERSION\n"
         "#error This file was generated by an older version of protoc which "
         "is\n"
         "#error incompatible with your Protocol Buffer headers. Please\n"
         "#error regenerate this file with a newer version of protoc.\n"
         "#endif\n"
         "\n",
-        GOOGLE_PROTOBUF_MIN_HEADER_VERSION_FOR_PROTOC,  // 1
-        GOOGLE_PROTOBUF_VERSION);                       // 2
+        PROTOBUF_MIN_HEADER_VERSION_FOR_PROTOC,  // 1
+        PROTOBUF_VERSION);                               // 2
+    IncludeFile("net/proto2/public/port_undef.inc", printer);
   }
 
   // OK, it's now safe to #include other files.
@@ -1287,7 +1293,7 @@ void FileGenerator::GenerateLibraryIncludes(io::Printer* printer) {
     IncludeFile("net/proto2/public/unknown_field_set.h", printer);
   }
 
-  if (IsAnyMessage(file_)) {
+  if (IsAnyMessage(file_, options_)) {
     IncludeFile("net/proto2/internal/any.h", printer);
   }
 }
@@ -1341,11 +1347,11 @@ void FileGenerator::GenerateGlobalStateFunctionDeclarations(
       // These tables describe how to serialize and parse messages. Used
       // for table driven code.
       "  static const ::$proto_ns$::internal::ParseTableField entries[]\n"
-      "    $GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold);\n"
+      "    PROTOBUF_SECTION_VARIABLE(protodesc_cold);\n"
       "  static const ::$proto_ns$::internal::AuxillaryParseTableField aux[]\n"
-      "    $GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold);\n"
+      "    PROTOBUF_SECTION_VARIABLE(protodesc_cold);\n"
       "  static const ::$proto_ns$::internal::ParseTable schema[$1$]\n"
-      "    $GOOGLE_PROTOBUF$_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold);\n"
+      "    PROTOBUF_SECTION_VARIABLE(protodesc_cold);\n"
       "  static const ::$proto_ns$::internal::FieldMetadata field_metadata[];\n"
       "  static const ::$proto_ns$::internal::SerializationTable "
       "serialization_table[];\n"

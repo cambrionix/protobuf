@@ -41,13 +41,12 @@
 #include <unordered_set>
 #include <vector>
 
-#include <google/protobuf/stubs/hash.h>
 #include <google/protobuf/compiler/objectivec/objectivec_helpers.h>
+#include <google/protobuf/compiler/objectivec/objectivec_nsobject_methods.h>
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/stubs/common.h>
 #include <google/protobuf/stubs/io_win32.h>
 #include <google/protobuf/stubs/strutil.h>
 
@@ -75,6 +74,10 @@ Options::Options() {
   const char* file_path = getenv("GPB_OBJC_EXPECTED_PACKAGE_PREFIXES");
   if (file_path) {
     expected_prefixes_path = file_path;
+  }
+  const char* suppressions = getenv("GPB_OBJC_EXPECTED_PACKAGE_PREFIXES_SUPPRESSIONS");
+  if (suppressions) {
+    SplitStringUsing(suppressions, ";", &expected_prefixes_suppressions);
   }
 }
 
@@ -166,70 +169,111 @@ string UnderscoresToCamelCase(const string& input, bool first_capitalized) {
 }
 
 const char* const kReservedWordList[] = {
-    // Objective C "keywords" that aren't in C
-    // From
-    // http://stackoverflow.com/questions/1873630/reserved-keywords-in-objective-c
-    "id", "_cmd", "super", "in", "out", "inout", "bycopy", "byref", "oneway",
-    "self",
+  // Note NSObject Methods:
+  // These are brought in from objectivec_nsobject_methods.h that is generated
+  // using method_dump.sh. See kNSObjectMethods below.
 
-    // C/C++ keywords (Incl C++ 0x11)
-    // From http://en.cppreference.com/w/cpp/keywords
-    "and", "and_eq", "alignas", "alignof", "asm", "auto", "bitand", "bitor",
-    "bool", "break", "case", "catch", "char", "char16_t", "char32_t", "class",
-    "compl", "const", "constexpr", "const_cast", "continue", "decltype",
-    "default", "delete", "double", "dynamic_cast", "else", "enum", "explicit",
-    "export", "extern ", "false", "float", "for", "friend", "goto", "if",
-    "inline", "int", "long", "mutable", "namespace", "new", "noexcept", "not",
-    "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected",
-    "public", "register", "reinterpret_cast", "return", "short", "signed",
-    "sizeof", "static", "static_assert", "static_cast", "struct", "switch",
-    "template", "this", "thread_local", "throw", "true", "try", "typedef",
-    "typeid", "typename", "union", "unsigned", "using", "virtual", "void",
-    "volatile", "wchar_t", "while", "xor", "xor_eq",
+  // Objective C "keywords" that aren't in C
+  // From
+  // http://stackoverflow.com/questions/1873630/reserved-keywords-in-objective-c
+  // with some others added on.
+  "id", "_cmd", "super", "in", "out", "inout", "bycopy", "byref", "oneway",
+  "self", "instancetype", "nullable", "nonnull", "nil", "Nil",
+  "YES", "NO", "weak",
 
-    // C99 keywords
-    // From
-    // http://publib.boulder.ibm.com/infocenter/lnxpcomp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8l.doc%2Flanguage%2Fref%2Fkeyw.htm
-    "restrict",
+  // C/C++ keywords (Incl C++ 0x11)
+  // From http://en.cppreference.com/w/cpp/keywords
+  "and", "and_eq", "alignas", "alignof", "asm", "auto", "bitand", "bitor",
+  "bool", "break", "case", "catch", "char", "char16_t", "char32_t", "class",
+  "compl", "const", "constexpr", "const_cast", "continue", "decltype",
+  "default", "delete", "double", "dynamic_cast", "else", "enum", "explicit",
+  "export", "extern ", "false", "float", "for", "friend", "goto", "if",
+  "inline", "int", "long", "mutable", "namespace", "new", "noexcept", "not",
+  "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected",
+  "public", "register", "reinterpret_cast", "return", "short", "signed",
+  "sizeof", "static", "static_assert", "static_cast", "struct", "switch",
+  "template", "this", "thread_local", "throw", "true", "try", "typedef",
+  "typeid", "typename", "union", "unsigned", "using", "virtual", "void",
+  "volatile", "wchar_t", "while", "xor", "xor_eq",
 
-    // Objective-C Runtime typedefs
-    // From <obc/runtime.h>
-    "Category", "Ivar", "Method", "Protocol",
+  // C99 keywords
+  // From
+  // http://publib.boulder.ibm.com/infocenter/lnxpcomp/v8v101/index.jsp?topic=%2Fcom.ibm.xlcpp8l.doc%2Flanguage%2Fref%2Fkeyw.htm
+  "restrict",
 
-    // NSObject Methods
-    // new is covered by C++ keywords.
-    "description", "debugDescription", "finalize", "hash", "dealloc", "init",
-    "class", "superclass", "retain", "release", "autorelease", "retainCount",
-    "zone", "isProxy", "copy", "mutableCopy", "classForCoder",
+  // GCC/Clang extension
+  "typeof",
 
-    // GPBMessage Methods
-    // Only need to add instance methods that may conflict with
-    // method declared in protos. The main cases are methods
-    // that take no arguments, or setFoo:/hasFoo: type methods.
-    "clear", "data", "delimitedData", "descriptor", "extensionRegistry",
-    "extensionsCurrentlySet", "initialized", "isInitialized", "serializedSize",
-    "sortedExtensionsInUse", "unknownFields",
+  // Not a keyword, but will break you
+  "NULL",
 
-    // MacTypes.h names
-    "Fixed", "Fract", "Size", "LogicalAddress", "PhysicalAddress", "ByteCount",
-    "ByteOffset", "Duration", "AbsoluteTime", "OptionBits", "ItemCount",
-    "PBVersion", "ScriptCode", "LangCode", "RegionCode", "OSType",
-    "ProcessSerialNumber", "Point", "Rect", "FixedPoint", "FixedRect", "Style",
-    "StyleParameter", "StyleField", "TimeScale", "TimeBase", "TimeRecord",
+  // Objective-C Runtime typedefs
+  // From <obc/runtime.h>
+  "Category", "Ivar", "Method", "Protocol",
+
+  // GPBMessage Methods
+  // Only need to add instance methods that may conflict with
+  // method declared in protos. The main cases are methods
+  // that take no arguments, or setFoo:/hasFoo: type methods.
+  "clear", "data", "delimitedData", "descriptor", "extensionRegistry",
+  "extensionsCurrentlySet", "initialized", "isInitialized", "serializedSize",
+  "sortedExtensionsInUse", "unknownFields",
+
+  // MacTypes.h names
+  "Fixed", "Fract", "Size", "LogicalAddress", "PhysicalAddress", "ByteCount",
+  "ByteOffset", "Duration", "AbsoluteTime", "OptionBits", "ItemCount",
+  "PBVersion", "ScriptCode", "LangCode", "RegionCode", "OSType",
+  "ProcessSerialNumber", "Point", "Rect", "FixedPoint", "FixedRect", "Style",
+  "StyleParameter", "StyleField", "TimeScale", "TimeBase", "TimeRecord",
 };
 
-std::unordered_set<string> kReservedWords =
-    MakeWordsMap(kReservedWordList, GOOGLE_ARRAYSIZE(kReservedWordList));
+// returns true is input starts with __ or _[A-Z] which are reserved identifiers
+// in C/ C++. All calls should go through UnderscoresToCamelCase before getting here
+// but this verifies and allows for future expansion if we decide to redefine what a
+// reserved C identifier is (for example the GNU list
+// https://www.gnu.org/software/libc/manual/html_node/Reserved-Names.html )
+bool IsReservedCIdentifier(const string& input) {
+  if (input.length() > 2) {
+    if (input.at(0) == '_') {
+      if (isupper(input.at(1)) || input.at(1) == '_') {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
-string SanitizeNameForObjC(const string& input,
+string SanitizeNameForObjC(const string& prefix,
+                           const string& input,
                            const string& extension,
                            string* out_suffix_added) {
-  if (kReservedWords.count(input) > 0) {
+  static const std::unordered_set<string> kReservedWords =
+      MakeWordsMap(kReservedWordList, GOOGLE_ARRAYSIZE(kReservedWordList));
+  static const std::unordered_set<string> kNSObjectMethods =
+      MakeWordsMap(kNSObjectMethodsList, GOOGLE_ARRAYSIZE(kNSObjectMethodsList));
+  string sanitized;
+  // We add the prefix in the cases where the string is missing a prefix.
+  // We define "missing a prefix" as where 'input':
+  // a) Doesn't start with the prefix or
+  // b) Isn't equivalent to the prefix or
+  // c) Has the prefix, but the letter after the prefix is lowercase
+  if (HasPrefixString(input, prefix)) {
+    if (input.length() == prefix.length() || !ascii_isupper(input[prefix.length()])) {
+      sanitized = prefix + input;
+    } else {
+      sanitized = input;
+    }
+  } else {
+    sanitized = prefix + input;
+  }
+  if (IsReservedCIdentifier(sanitized) ||
+      (kReservedWords.count(sanitized) > 0) ||
+      (kNSObjectMethods.count(sanitized) > 0)) {
     if (out_suffix_added) *out_suffix_added = extension;
-    return input + extension;
+    return sanitized + extension;
   }
   if (out_suffix_added) out_suffix_added->clear();
-  return input;
+  return sanitized;
 }
 
 string NameFromFieldDescriptor(const FieldDescriptor* field) {
@@ -388,12 +432,11 @@ string FilePathBasename(const FileDescriptor* file) {
 }
 
 string FileClassName(const FileDescriptor* file) {
-  string name = FileClassPrefix(file);
-  name += UnderscoresToCamelCase(StripProto(BaseFileName(file)), true);
-  name += "Root";
+  const string prefix = FileClassPrefix(file);
+  const string name = UnderscoresToCamelCase(StripProto(BaseFileName(file)), true) + "Root";
   // There aren't really any reserved words that end in "Root", but playing
   // it safe and checking.
-  return SanitizeNameForObjC(name, "_RootClass", NULL);
+  return SanitizeNameForObjC(prefix, name, "_RootClass", NULL);
 }
 
 string ClassNameWorker(const Descriptor* descriptor) {
@@ -421,9 +464,9 @@ string ClassName(const Descriptor* descriptor) {
 string ClassName(const Descriptor* descriptor, string* out_suffix_added) {
   // 1. Message names are used as is (style calls for CamelCase, trust it).
   // 2. Check for reserved word at the very end and then suffix things.
-  string prefix = FileClassPrefix(descriptor->file());
-  string name = ClassNameWorker(descriptor);
-  return SanitizeNameForObjC(prefix + name, "_Class", out_suffix_added);
+  const string prefix = FileClassPrefix(descriptor->file());
+  const string name = ClassNameWorker(descriptor);
+  return SanitizeNameForObjC(prefix, name, "_Class", out_suffix_added);
 }
 
 string EnumName(const EnumDescriptor* descriptor) {
@@ -435,9 +478,9 @@ string EnumName(const EnumDescriptor* descriptor) {
   //      ...
   //      }
   //    yields Fixed_Class, Fixed_Size.
-  string name = FileClassPrefix(descriptor->file());
-  name += ClassNameWorker(descriptor);
-  return SanitizeNameForObjC(name, "_Enum", NULL);
+  const string prefix = FileClassPrefix(descriptor->file());
+  const string name = ClassNameWorker(descriptor);
+  return SanitizeNameForObjC(prefix, name, "_Enum", NULL);
 }
 
 string EnumValueName(const EnumValueDescriptor* descriptor) {
@@ -447,12 +490,12 @@ string EnumValueName(const EnumValueDescriptor* descriptor) {
   //     FOO = 1
   //   }
   // yields Fixed_Enum and Fixed_Enum_Foo (not Fixed_Foo).
-  const string& class_name = EnumName(descriptor->type());
-  const string& value_str = UnderscoresToCamelCase(descriptor->name(), true);
-  const string& name = class_name + "_" + value_str;
+  const string class_name = EnumName(descriptor->type());
+  const string value_str = UnderscoresToCamelCase(descriptor->name(), true);
+  const string name = class_name + "_" + value_str;
   // There aren't really any reserved words with an underscore and a leading
   // capital letter, but playing it safe and checking.
-  return SanitizeNameForObjC(name, "_Value", NULL);
+  return SanitizeNameForObjC("", name, "_Value", NULL);
 }
 
 string EnumValueShortName(const EnumValueDescriptor* descriptor) {
@@ -468,9 +511,9 @@ string EnumValueShortName(const EnumValueDescriptor* descriptor) {
   // So the right way to get the short name is to take the full enum name
   // and then strip off the enum name (leaving the value name and anything
   // done by sanitize).
-  const string& class_name = EnumName(descriptor->type());
-  const string& long_name_prefix = class_name + "_";
-  const string& long_name = EnumValueName(descriptor);
+  const string class_name = EnumName(descriptor->type());
+  const string long_name_prefix = class_name + "_";
+  const string long_name = EnumValueName(descriptor);
   return StripPrefixString(long_name, long_name_prefix);
 }
 
@@ -487,13 +530,13 @@ string UnCamelCaseEnumShortName(const string& name) {
 }
 
 string ExtensionMethodName(const FieldDescriptor* descriptor) {
-  const string& name = NameFromFieldDescriptor(descriptor);
-  const string& result = UnderscoresToCamelCase(name, false);
-  return SanitizeNameForObjC(result, "_Extension", NULL);
+  const string name = NameFromFieldDescriptor(descriptor);
+  const string result = UnderscoresToCamelCase(name, false);
+  return SanitizeNameForObjC("", result, "_Extension", NULL);
 }
 
 string FieldName(const FieldDescriptor* field) {
-  const string& name = NameFromFieldDescriptor(field);
+  const string name = NameFromFieldDescriptor(field);
   string result = UnderscoresToCamelCase(name, false);
   if (field->is_repeated() && !field->is_map()) {
     // Add "Array" before do check for reserved worlds.
@@ -504,7 +547,7 @@ string FieldName(const FieldDescriptor* field) {
       result += "_p";
     }
   }
-  return SanitizeNameForObjC(result, "_p", NULL);
+  return SanitizeNameForObjC("", result, "_p", NULL);
 }
 
 string FieldNameCapitalized(const FieldDescriptor* field) {
@@ -1169,6 +1212,15 @@ bool ValidateObjCClassPrefixes(const std::vector<const FileDescriptor*>& files,
   }
 
   for (int i = 0; i < files.size(); i++) {
+    bool should_skip =
+      (std::find(generation_options.expected_prefixes_suppressions.begin(),
+                 generation_options.expected_prefixes_suppressions.end(),
+                 files[i]->name())
+          != generation_options.expected_prefixes_suppressions.end());
+    if (should_skip) {
+      continue;
+    }
+
     bool is_valid =
         ValidateObjCClassPrefix(files[i],
                                 generation_options.expected_prefixes_path,

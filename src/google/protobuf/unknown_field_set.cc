@@ -329,6 +329,7 @@ const char* PackedValidEnumParser(const char* begin, const char* end,
   while (ptr < end) {
     uint64 varint;
     ptr = Varint::Parse64(ptr, &varint);
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     int val = varint;
     if (ctx->extra_parse_data().ValidateEnum<UnknownFieldSet>(val))
       repeated_field->Add(val);
@@ -343,6 +344,7 @@ const char* PackedValidEnumParserArg(const char* begin, const char* end,
   while (ptr < end) {
     uint64 varint;
     ptr = Varint::Parse64(ptr, &varint);
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     int val = varint;
     if (ctx->extra_parse_data().ValidateEnumArg<UnknownFieldSet>(val))
       repeated_field->Add(val);
@@ -350,98 +352,47 @@ const char* PackedValidEnumParserArg(const char* begin, const char* end,
   return ptr;
 }
 
+class UnknownFieldParserHelper {
+ public:
+  explicit UnknownFieldParserHelper(UnknownFieldSet* unknown)
+      : unknown_(unknown) {}
+
+  void AddVarint(uint32 num, uint64 value) { unknown_->AddVarint(num, value); }
+  void AddFixed64(uint32 num, uint64 value) {
+    unknown_->AddFixed64(num, value);
+  }
+  ParseClosure AddLengthDelimited(uint32 num, uint32 size) {
+    string* s = unknown_->AddLengthDelimited(num);
+    // TODO(gerbens) SECURITY: add security
+    s->reserve(size);
+    return {GreedyStringParser, s};
+  }
+  ParseClosure StartGroup(uint32 num) {
+    return {UnknownGroupParse, unknown_->AddGroup(num)};
+  }
+  void EndGroup(uint32 num) {}
+  void AddFixed32(uint32 num, uint32 value) {
+    unknown_->AddFixed32(num, value);
+  }
+
+ private:
+  UnknownFieldSet* unknown_;
+};
+
 const char* UnknownGroupParse(const char* begin, const char* end, void* object,
                               ParseContext* ctx) {
-  auto unknown = static_cast<UnknownFieldSet*>(object);
-
-  auto ptr = begin;
-  while (ptr < end) {
-    uint32 tag;
-    ptr = Varint::Parse32Inline(ptr, &tag);
-    if ((tag >> 3) == 0) return nullptr;
-
-    auto res = UnknownFieldParse(tag, {UnknownGroupParse, unknown}, ptr, end,
-                                 unknown, ctx);
-    ptr = res.first;
-    if (res.second) break;
-  }
-  return ptr;
+  UnknownFieldParserHelper field_parser(static_cast<UnknownFieldSet*>(object));
+  return WireFormatParser({UnknownGroupParse, object}, field_parser, begin, end,
+                          ctx);
 }
 
-std::pair<const char*, bool> UnknownFieldParse(uint32 tag, ParseClosure parent,
+std::pair<const char*, bool> UnknownFieldParse(uint64 tag, ParseClosure parent,
                                                const char* begin,
                                                const char* end,
                                                UnknownFieldSet* unknown,
                                                ParseContext* ctx) {
-  uint32 size;
-  int depth;
-  void* object;
-  auto ptr = begin;
-
-  GOOGLE_DCHECK(tag >> 3);
-
-  uint32 field_num = tag >> 3;
-  switch (tag & 7) {
-    case 0: {
-      uint64 val;
-      ptr = Varint::Parse64(ptr, &val);
-      if (!ptr) goto error;
-      unknown->AddVarint(field_num, val);
-      break;
-    }
-    case 1: {
-      uint64 val = UNALIGNED_LOAD64(ptr);
-      ptr = ptr + 8;
-      unknown->AddFixed64(field_num, val);
-      break;
-    }
-    case 2: {
-      ptr = Varint::Parse32Inline(ptr, &size);
-      if (!ptr) goto error;
-      object = unknown->AddLengthDelimited(field_num);
-      if (size > end - ptr) goto len_delim_till_end;
-      auto newend = ptr + size;
-      if (!ctx->ParseExactRange({StringParser, object}, ptr, newend)) {
-        goto error;
-      }
-      ptr = newend;
-      break;
-    }
-    case 3: {
-      object = unknown->AddGroup(field_num);
-      if (!ctx->PrepareGroup(tag, &depth)) goto error;
-      ptr = UnknownGroupParse(ptr, end, object, ctx);
-      if (!ptr) goto error;
-      if (ctx->GroupContinues(depth)) goto group_continues;
-      break;
-    }
-    case 4: {
-      if (!ctx->ValidEndGroup(tag)) goto error;
-      return std::make_pair(ptr, true);
-    }
-    case 5: {
-      uint32 val = UNALIGNED_LOAD32(ptr);
-      ptr = ptr + 4;
-      unknown->AddFixed32(field_num, val);
-      break;
-    }
-    default:
-      goto error;
-  }
-  return std::make_pair(ptr, false);
-error:
-  return std::make_pair(nullptr, true);
-len_delim_till_end:
-  // Length delimited field crosses end
-  return std::make_pair(
-      ctx->StoreAndTailCall(ptr, end, parent, {StringParser, object}, size),
-      true);
-group_continues:
-  GOOGLE_DCHECK(ptr >= end);
-  // Group crossed end and must be continued. Either this a parse failure
-  // or we need to resume on the next chunk and thus save the state.
-  ctx->StoreGroup(parent, {UnknownGroupParse, object}, depth);
-  return std::make_pair(ptr, true);
+  UnknownFieldParserHelper field_parser(unknown);
+  return FieldParser(tag, parent, field_parser, begin, end, ctx);
 }
 
 }  // namespace internal

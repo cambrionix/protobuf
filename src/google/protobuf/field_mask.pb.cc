@@ -13,10 +13,6 @@
 #include <google/protobuf/generated_message_reflection.h>
 #include <google/protobuf/reflection_ops.h>
 #include <google/protobuf/wire_format.h>
-// This is a temporary google only hack
-#ifdef GOOGLE_PROTOBUF_ENFORCE_UNIQUENESS
-#include "third_party/protobuf/version.h"
-#endif
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 
@@ -39,7 +35,7 @@ static void InitDefaultsFieldMask_google_2fprotobuf_2ffield_5fmask_2eproto() {
   ::google::protobuf::FieldMask::InitAsDefaultInstance();
 }
 
-LIBPROTOBUF_EXPORT ::google::protobuf::internal::SCCInfo<0> scc_info_FieldMask_google_2fprotobuf_2ffield_5fmask_2eproto =
+PROTOBUF_EXPORT ::google::protobuf::internal::SCCInfo<0> scc_info_FieldMask_google_2fprotobuf_2ffield_5fmask_2eproto =
     {{ATOMIC_VAR_INIT(::google::protobuf::internal::SCCInfoBase::kUninitialized), 0, InitDefaultsFieldMask_google_2fprotobuf_2ffield_5fmask_2eproto}, {}};
 
 void InitDefaults_google_2fprotobuf_2ffield_5fmask_2eproto() {
@@ -50,15 +46,15 @@ void InitDefaults_google_2fprotobuf_2ffield_5fmask_2eproto() {
 constexpr ::google::protobuf::EnumDescriptor const** file_level_enum_descriptors_google_2fprotobuf_2ffield_5fmask_2eproto = nullptr;
 constexpr ::google::protobuf::ServiceDescriptor const** file_level_service_descriptors_google_2fprotobuf_2ffield_5fmask_2eproto = nullptr;
 
-const ::google::protobuf::uint32 TableStruct_google_2fprotobuf_2ffield_5fmask_2eproto::offsets[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
+const ::google::protobuf::uint32 TableStruct_google_2fprotobuf_2ffield_5fmask_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   ~0u,  // no _has_bits_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::FieldMask, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::FieldMask, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::google::protobuf::FieldMask, paths_),
+  PROTOBUF_FIELD_OFFSET(::google::protobuf::FieldMask, paths_),
 };
-static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
+static const ::google::protobuf::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, sizeof(::google::protobuf::FieldMask)},
 };
 
@@ -72,15 +68,17 @@ static ::google::protobuf::Message const * const file_default_instances[] = {
   file_level_metadata_google_2fprotobuf_2ffield_5fmask_2eproto, 1, file_level_enum_descriptors_google_2fprotobuf_2ffield_5fmask_2eproto, file_level_service_descriptors_google_2fprotobuf_2ffield_5fmask_2eproto,
 };
 
-::google::protobuf::internal::DescriptorTable descriptor_table_google_2fprotobuf_2ffield_5fmask_2eproto = {
-  false, InitDefaults_google_2fprotobuf_2ffield_5fmask_2eproto, 
+const char descriptor_table_protodef_google_2fprotobuf_2ffield_5fmask_2eproto[] =
   "\n google/protobuf/field_mask.proto\022\017goog"
   "le.protobuf\"\032\n\tFieldMask\022\r\n\005paths\030\001 \003(\tB"
   "\214\001\n\023com.google.protobufB\016FieldMaskProtoP"
   "\001Z9google.golang.org/genproto/protobuf/f"
   "ield_mask;field_mask\370\001\001\242\002\003GPB\252\002\036Google.P"
   "rotobuf.WellKnownTypesb\006proto3"
-,
+  ;
+::google::protobuf::internal::DescriptorTable descriptor_table_google_2fprotobuf_2ffield_5fmask_2eproto = {
+  false, InitDefaults_google_2fprotobuf_2ffield_5fmask_2eproto, 
+  descriptor_table_protodef_google_2fprotobuf_2ffield_5fmask_2eproto,
   "google/protobuf/field_mask.proto", &assign_descriptors_table_google_2fprotobuf_2ffield_5fmask_2eproto, 230,
 };
 
@@ -109,7 +107,7 @@ const int FieldMask::kPathsFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 FieldMask::FieldMask()
-  : ::google::protobuf::Message(), _internal_metadata_(NULL) {
+  : ::google::protobuf::Message(), _internal_metadata_(nullptr) {
   SharedCtor();
   // @@protoc_insertion_point(constructor:google.protobuf.FieldMask)
 }
@@ -123,7 +121,7 @@ FieldMask::FieldMask(::google::protobuf::Arena* arena)
 }
 FieldMask::FieldMask(const FieldMask& from)
   : ::google::protobuf::Message(),
-      _internal_metadata_(NULL),
+      _internal_metadata_(nullptr),
       paths_(from.paths_) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   // @@protoc_insertion_point(copy_constructor:google.protobuf.FieldMask)
@@ -140,7 +138,7 @@ FieldMask::~FieldMask() {
 }
 
 void FieldMask::SharedDtor() {
-  GOOGLE_DCHECK(GetArenaNoVirtual() == NULL);
+  GOOGLE_DCHECK(GetArenaNoVirtual() == nullptr);
 }
 
 void FieldMask::ArenaDtor(void* object) {
@@ -174,61 +172,62 @@ const char* FieldMask::_InternalParse(const char* begin, const char* end, void* 
   auto msg = static_cast<FieldMask*>(object);
   ::google::protobuf::uint32 size; (void)size;
   int depth; (void)depth;
+  ::google::protobuf::uint32 tag;
   ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
   auto ptr = begin;
   while (ptr < end) {
-    ::google::protobuf::uint32 tag;
     ptr = Varint::Parse32Inline(ptr, &tag);
-    if (!ptr) goto error;
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
     switch (tag >> 3) {
-      case 0: goto error;
       // repeated string paths = 1;
       case 1: {
         if (static_cast<::google::protobuf::uint8>(tag) != 10) goto handle_unusual;
         do {
           ptr = Varint::Parse32Inline(ptr, &size);
-          if (!ptr) goto error;
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
           ctx->extra_parse_data().SetFieldName("google.protobuf.FieldMask.paths");
-          parser_till_end = ::google::protobuf::internal::StringParserUTF8;
-          ::std::string* str = msg->add_paths();
-          str->clear();
-          object = str;
-          if (size > end - ptr) goto len_delim_till_end;
-          auto newend = ptr + size;
-          if (!ctx->ParseExactRange({parser_till_end, object}, ptr, newend)) goto error;
-          ptr = newend;
+          auto str = msg->add_paths();
+          if (size > end - ptr + ::google::protobuf::internal::ParseContext::kSlopBytes) {
+            object = str;
+            str->clear();
+            str->reserve(size);
+            parser_till_end = ::google::protobuf::internal::GreedyStringParserUTF8;
+            goto len_delim_till_end;
+          }
+          GOOGLE_PROTOBUF_PARSER_ASSERT(::google::protobuf::internal::StringCheckUTF8(ptr, size, ctx));
+          ::google::protobuf::internal::InlineGreedyStringParser(str, ptr, size, ctx);
+          ptr += size;
           if (ptr >= end) break;
-        } while((*reinterpret_cast<const ::google::protobuf::uint64*>(ptr) & 255) == 10 && (ptr += 1));
+        } while ((::google::protobuf::io::UnalignedLoad<::google::protobuf::uint64>(ptr) & 255) == 10 && (ptr += 1));
         break;
       }
       default: {
       handle_unusual: (void)&&handle_unusual;
-        if ((tag & 7) == 4) {
-          if (!ctx->ValidEndGroup(tag)) goto error;
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->EndGroup(tag);
           return ptr;
         }
         auto res = UnknownFieldParse(tag, {_InternalParse, msg},
           ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
         ptr = res.first;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
         if (res.second) return ptr;
       }
     }  // switch
   }  // while
   return ptr;
-error:
-  return nullptr;
 len_delim_till_end: (void)&&len_delim_till_end;
   return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg},
                                  {parser_till_end, object}, size);
 group_continues: (void)&&group_continues;
   GOOGLE_DCHECK(ptr >= end);
-  ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth);
+  GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->StoreGroup({_InternalParse, msg}, {parser_till_end, object}, depth, tag));
   return ptr;
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool FieldMask::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
-#define DO_(EXPRESSION) if (!GOOGLE_PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
+#define DO_(EXPRESSION) if (!PROTOBUF_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
   // @@protoc_insertion_point(parse_start:google.protobuf.FieldMask)
   for (;;) {
@@ -353,7 +352,7 @@ void FieldMask::MergeFrom(const ::google::protobuf::Message& from) {
   const FieldMask* source =
       ::google::protobuf::DynamicCastToGenerated<FieldMask>(
           &from);
-  if (source == NULL) {
+  if (source == nullptr) {
   // @@protoc_insertion_point(generalized_merge_from_cast_fail:google.protobuf.FieldMask)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
@@ -399,7 +398,7 @@ void FieldMask::Swap(FieldMask* other) {
     temp->MergeFrom(*other);
     other->CopyFrom(*this);
     InternalSwap(temp);
-    if (GetArenaNoVirtual() == NULL) {
+    if (GetArenaNoVirtual() == nullptr) {
       delete temp;
     }
   }
@@ -426,10 +425,11 @@ void FieldMask::InternalSwap(FieldMask* other) {
 }  // namespace google
 namespace google {
 namespace protobuf {
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::google::protobuf::FieldMask* Arena::CreateMaybeMessage< ::google::protobuf::FieldMask >(Arena* arena) {
+template<> PROTOBUF_NOINLINE ::google::protobuf::FieldMask* Arena::CreateMaybeMessage< ::google::protobuf::FieldMask >(Arena* arena) {
   return Arena::CreateMessageInternal< ::google::protobuf::FieldMask >(arena);
 }
 }  // namespace protobuf
 }  // namespace google
 
 // @@protoc_insertion_point(global_scope)
+#include <google/protobuf/port_undef.inc>

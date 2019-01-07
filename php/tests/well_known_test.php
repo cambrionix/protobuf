@@ -42,6 +42,7 @@ class WellKnownTest extends TestBase {
     public function testEmpty()
     {
         $msg = new GPBEmpty();
+        $this->assertTrue($msg instanceof \Google\Protobuf\Internal\Message);
     }
 
     public function testImportDescriptorProto()
@@ -390,5 +391,28 @@ class WellKnownTest extends TestBase {
         $m = new BytesValue();
         $m->setValue("a");
         $this->assertSame("a", $m->getValue());
+    }
+
+    /**
+     * @dataProvider enumNameValueConversionDataProvider
+     */
+    public function testEnumNameValueConversion($class)
+    {
+        $reflectionClass = new ReflectionClass($class);
+        $constants = $reflectionClass->getConstants();
+        foreach ($constants as $k => $v) {
+            $this->assertSame($k, $class::name($v));
+            $this->assertSame($v, $class::value($k));
+        }
+    }
+
+    public function enumNameValueConversionDataProvider()
+    {
+        return [
+            ['\Google\Protobuf\Field\Cardinality'],
+            ['\Google\Protobuf\Field\Kind'],
+            ['\Google\Protobuf\NullValue'],
+            ['\Google\Protobuf\Syntax'],
+        ];
     }
 }

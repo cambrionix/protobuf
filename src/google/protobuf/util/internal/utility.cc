@@ -327,7 +327,7 @@ string ToSnakeCase(StringPiece input) {
 }
 
 std::set<string>* well_known_types_ = NULL;
-GOOGLE_PROTOBUF_NAMESPACE_ID::internal::once_flag well_known_types_init_;
+PROTOBUF_NAMESPACE_ID::internal::once_flag well_known_types_init_;
 const char* well_known_types_name_array_[] = {
     "google.protobuf.Timestamp",   "google.protobuf.Duration",
     "google.protobuf.DoubleValue", "google.protobuf.FloatValue",
@@ -347,8 +347,8 @@ void InitWellKnownTypes() {
 }
 
 bool IsWellKnownType(const string& type_name) {
-  GOOGLE_PROTOBUF_NAMESPACE_ID::internal::call_once(well_known_types_init_,
-                                                     InitWellKnownTypes);
+  PROTOBUF_NAMESPACE_ID::internal::call_once(well_known_types_init_,
+                                             InitWellKnownTypes);
   return ContainsKey(*well_known_types_, type_name);
 }
 
@@ -408,13 +408,6 @@ bool SafeStrToFloat(StringPiece str, float* value) {
   return true;
 }
 
-bool StringStartsWith(StringPiece text, StringPiece prefix) {
-  return text.starts_with(prefix);
-}
-
-bool StringEndsWith(StringPiece text, StringPiece suffix) {
-  return text.ends_with(suffix);
-}
 }  // namespace converter
 }  // namespace util
 }  // namespace protobuf

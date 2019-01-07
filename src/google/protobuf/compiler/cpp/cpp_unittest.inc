@@ -50,7 +50,7 @@
 #include <vector>
 
 #include <google/protobuf/unittest_no_arena.pb.h>
-
+#include <google/protobuf/stubs/strutil.h>
 #if !defined(GOOGLE_PROTOBUF_CMAKE_BUILD) && !defined(_MSC_VER)
 // We exclude this large proto from cmake build because it's too large for
 // visual studio to compile (report internal errors).
@@ -77,6 +77,8 @@
 #include <gtest/gtest.h>
 #include <google/protobuf/stubs/casts.h>
 #include <google/protobuf/stubs/stl_util.h>
+
+#include <google/protobuf/port_def.inc>
 
 namespace google {
 namespace protobuf {
@@ -203,7 +205,7 @@ TEST(GENERATED_MESSAGE_TEST_NAME, ExtremeSmallIntegerDefault) {
   const UNITTEST::TestExtremeDefaultValues& extreme_default =
       UNITTEST::TestExtremeDefaultValues::default_instance();
   EXPECT_EQ(~0x7fffffff, kint32min);
-  EXPECT_EQ(GOOGLE_LONGLONG(~0x7fffffffffffffff), kint64min);
+  EXPECT_EQ(PROTOBUF_LONGLONG(~0x7fffffffffffffff), kint64min);
   EXPECT_EQ(kint32min, extreme_default.really_small_int32());
   EXPECT_EQ(kint64min, extreme_default.really_small_int64());
 }
@@ -656,7 +658,7 @@ TEST(GENERATED_MESSAGE_TEST_NAME, CopyAssignmentOperator) {
   TestUtil::ExpectAllFieldsSet(message2);
 }
 
-#if !defined(PROTOBUF_TEST_NO_DESCRIPTORS) || GOOGLE_PROTOBUF_RTTI
+#if !defined(PROTOBUF_TEST_NO_DESCRIPTORS) || PROTOBUF_RTTI
 TEST(GENERATED_MESSAGE_TEST_NAME, UpcastCopyFrom) {
   // Test the CopyFrom method that takes in the generic const Message&
   // parameter.
@@ -2267,3 +2269,5 @@ TEST(DESCRIPTOR_INIT_TEST_NAME, Initialized) {
 }  // namespace compiler
 }  // namespace protobuf
 }  // namespace google
+
+#include <google/protobuf/port_undef.inc>

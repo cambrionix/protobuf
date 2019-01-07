@@ -79,6 +79,8 @@
 #include <google/protobuf/stubs/casts.h>
 
 
+#include <google/protobuf/port_def.inc>
+
 namespace google {
 namespace protobuf {
 
@@ -1977,7 +1979,7 @@ TEST(GeneratedMapFieldTest, CopyAssignmentOperator) {
   MapTestUtil::ExpectMapFieldsSet(message2);
 }
 
-#if !defined(PROTOBUF_TEST_NO_DESCRIPTORS) || GOOGLE_PROTOBUF_RTTI
+#if !defined(PROTOBUF_TEST_NO_DESCRIPTORS) || PROTOBUF_RTTI
 TEST(GeneratedMapFieldTest, UpcastCopyFrom) {
   // Test the CopyFrom method that takes in the generic const Message&
   // parameter.
@@ -2028,6 +2030,42 @@ TEST(GeneratedMapFieldTest, CopyFromDynamicMessageMapReflection) {
   reflection_tester.ExpectMapFieldsSetViaReflectionIterator(message1.get());
   message2.CopyFrom(*message1);
   MapTestUtil::ExpectMapFieldsSet(message2);
+}
+
+TEST(GeneratedMapFieldTest, DynamicMessageMergeFromDynamicMessage) {
+  // Construct two dynamic message and sets via map reflection.
+  DynamicMessageFactory factory;
+  std::unique_ptr<Message> message1;
+  message1.reset(
+      factory.GetPrototype(unittest::TestMap::descriptor())->New());
+  MapReflectionTester reflection_tester(
+      unittest::TestMap::descriptor());
+  reflection_tester.SetMapFieldsViaMapReflection(message1.get());
+
+  // message2 is created by same factory.
+  std::unique_ptr<Message> message2;
+  message2.reset(
+      factory.GetPrototype(unittest::TestMap::descriptor())->New());
+  reflection_tester.SetMapFieldsViaMapReflection(message2.get());
+
+  // message3 is created by different factory.
+  DynamicMessageFactory factory3;
+  std::unique_ptr<Message> message3;
+  message3.reset(
+      factory3.GetPrototype(unittest::TestMap::descriptor())->New());
+  reflection_tester.SetMapFieldsViaMapReflection(message3.get());
+
+  message2->MergeFrom(*message1);
+  message3->MergeFrom(*message1);
+
+  // Test MergeFrom does not sync to repeated fields and
+  // there is no duplicate keys in text format.
+  string output1, output2, output3;
+  TextFormat::PrintToString(*message1, &output1);
+  TextFormat::PrintToString(*message2, &output2);
+  TextFormat::PrintToString(*message3, &output3);
+  EXPECT_EQ(output1, output2);
+  EXPECT_EQ(output1, output3);
 }
 
 TEST(GeneratedMapFieldTest, DynamicMessageCopyFrom) {
@@ -2095,6 +2133,18 @@ TEST(GeneratedMapFieldTest, NonEmptyMergeFrom) {
 
   message1.MergeFrom(message2);
   MapTestUtil::ExpectMapFieldsSet(message1);
+
+  // Test reflection MergeFrom does not sync to repeated field
+  // and there is no duplicated keys.
+  MapTestUtil::SetMapFields(&message1);
+  MapTestUtil::SetMapFields(&message2);
+
+  message2.MergeFrom(message1);
+
+  string output1, output2;
+  TextFormat::PrintToString(message1, &output1);
+  TextFormat::PrintToString(message2, &output2);
+  EXPECT_EQ(output1, output2);
 }
 
 TEST(GeneratedMapFieldTest, MergeFromMessageMap) {
@@ -2205,6 +2255,7 @@ TEST(GeneratedMapFieldTest, UnorderedWireFormat) {
 
   EXPECT_TRUE(message.ParseFromString(data));
   EXPECT_EQ(1, message.map_int32_int32().size());
+  ASSERT_NE(message.map_int32_int32().find(2), message.map_int32_int32().end());
   EXPECT_EQ(1, message.map_int32_int32().at(2));
 }
 
@@ -2280,10 +2331,21 @@ TEST(GeneratedMapFieldTest, KeysValuesUnknownsWireFormat) {
         wire_format.push_back(c);
         if (is_key) expected_key = static_cast<int>(c);
         if (is_value) expected_value = static_cast<int>(c);
-        ASSERT_TRUE(message.ParseFromString(wire_format));
-        ASSERT_EQ(1, message.map_int32_int32().size());
-        ASSERT_EQ(expected_key, message.map_int32_int32().begin()->first);
-        ASSERT_EQ(expected_value, message.map_int32_int32().begin()->second);
+        bool res = message.ParseFromString(wire_format);
+        bool expect_success = true;
+#if GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
+        // Unfortunately the old map parser accepts malformed input, the new
+        // parser accepts only correct input.
+        if (j != items - 1) expect_success = false;
+#endif
+        if (expect_success) {
+          ASSERT_TRUE(res);
+          ASSERT_EQ(1, message.map_int32_int32().size());
+          ASSERT_EQ(expected_key, message.map_int32_int32().begin()->first);
+          ASSERT_EQ(expected_value, message.map_int32_int32().begin()->second);
+        } else {
+          ASSERT_FALSE(res);
+        }
       }
     }
   }
@@ -2308,6 +2370,7 @@ TEST(GeneratedMapFieldTest, MissedKeyWireFormat) {
 
   EXPECT_TRUE(message.ParseFromString(data));
   EXPECT_EQ(1, message.map_int32_int32().size());
+  ASSERT_NE(message.map_int32_int32().find(0), message.map_int32_int32().end());
   EXPECT_EQ(1, message.map_int32_int32().at(0));
 }
 
@@ -2319,6 +2382,7 @@ TEST(GeneratedMapFieldTest, MissedValueWireFormat) {
 
   EXPECT_TRUE(message.ParseFromString(data));
   EXPECT_EQ(1, message.map_int32_int32().size());
+  ASSERT_NE(message.map_int32_int32().find(1), message.map_int32_int32().end());
   EXPECT_EQ(0, message.map_int32_int32().at(1));
 }
 
@@ -3178,6 +3242,23 @@ TEST(TextFormatMapTest, SerializeAndParse) {
   MapTestUtil::ExpectMapFieldsSet(dest);
 }
 
+TEST(TextFormatMapTest, DynamicMessage) {
+  TestMap prototype;
+  DynamicMessageFactory factory;
+  std::unique_ptr<Message> message(
+      factory.GetPrototype(prototype.GetDescriptor())->New());
+  MapReflectionTester tester(message->GetDescriptor());
+  tester.SetMapFieldsViaReflection(message.get());
+
+  string expected_text;
+  GOOGLE_CHECK_OK(File::GetContents(
+      TestUtil::GetTestDataPath("net/proto2/internal/"
+                                "testdata/map_test_data.txt"),
+      &expected_text, true));
+
+  EXPECT_EQ(message->DebugString(), expected_text);
+}
+
 TEST(TextFormatMapTest, Sorted) {
   unittest::TestMap message;
   MapReflectionTester tester(message.GetDescriptor());
@@ -3209,6 +3290,78 @@ TEST(TextFormatMapTest, ParseCorruptedString) {
   GOOGLE_CHECK(message.ParseFromString(serialized_message));
   TestParseCorruptedString<protobuf_unittest::TestMaps, true>(message);
   TestParseCorruptedString<protobuf_unittest::TestMaps, false>(message);
+}
+
+// Previously, serializing to text format will disable iterator from generated
+// API. Now, the iterator can be still used even after serializing to text
+// format.
+TEST(TextFormatMapTest, NoDisableIterator) {
+  unittest::TestMap source;
+  (*source.mutable_map_int32_int32())[1] = 1;
+
+  // Get iterator.
+  Map<int32, int32>::iterator iter =
+      source.mutable_map_int32_int32()->find(1);
+
+  // Serialize message to text format, which will invalidate the previous
+  // iterator previously.
+  string output;
+  TextFormat::Printer printer;
+  printer.PrintToString(source, &output);
+
+  // Modify map via the iterator (invalidated in prvious implementation.).
+  iter->second = 2;
+
+  // In previous implementation, the new change won't be reflected in text
+  // format, because the previous iterator has been invalidated.
+  output.clear();
+  printer.PrintToString(source, &output);
+  string expected =
+      "map_int32_int32 {\n"
+      "  key: 1\n"
+      "  value: 2\n"
+      "}\n";
+  EXPECT_EQ(output, expected);
+}
+
+// Previously, serializing to text format will disable iterator from reflection
+// API.
+TEST(TextFormatMapTest, NoDisableReflectionIterator) {
+  unittest::TestMap source;
+  (*source.mutable_map_int32_int32())[1] = 1;
+
+  // Get iterator. This will also sync internal repeated field with map inside
+  // of MapField.
+  const Reflection* reflection = source.GetReflection();
+  const FieldDescriptor* field_desc =
+      source.GetDescriptor()->FindFieldByName("map_int32_int32");
+  RepeatedPtrField<Message>* map_field =
+      reflection->MutableRepeatedPtrField<Message>(&source, field_desc);
+  RepeatedPtrField<Message>::iterator iter = map_field->begin();
+
+  // Serialize message to text format, which will invalidate the prvious
+  // iterator previously.
+  string output;
+  TextFormat::Printer printer;
+  printer.PrintToString(source, &output);
+
+  // Modify map via the iterator (invalidated in prvious implementation.).
+  const Reflection* map_entry_reflection = iter->GetReflection();
+  const FieldDescriptor* value_field_desc =
+      iter->GetDescriptor()->FindFieldByName("value");
+  map_entry_reflection->SetInt32(&(*iter), value_field_desc, 2);
+  GOOGLE_LOG(INFO) << iter->DebugString();
+
+  // In previous implementation, the new change won't be reflected in text
+  // format, because the previous iterator has been invalidated.
+  output.clear();
+  printer.PrintToString(source, &output);
+  string expected =
+      "map_int32_int32 {\n"
+      "  key: 1\n"
+      "  value: 2\n"
+      "}\n";
+  EXPECT_EQ(output, expected);
 }
 
 

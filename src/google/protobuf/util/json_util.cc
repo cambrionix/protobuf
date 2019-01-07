@@ -44,7 +44,7 @@
 #include <google/protobuf/util/type_resolver_util.h>
 #include <google/protobuf/stubs/bytestream.h>
 
-
+#include <google/protobuf/stubs/strutil.h>
 #include <google/protobuf/stubs/status_macros.h>
 
 #include <google/protobuf/port_def.inc>
@@ -129,9 +129,9 @@ class StatusErrorListener : public converter::ErrorListener {
 
   util::Status GetStatus() { return status_; }
 
-  virtual void InvalidName(const converter::LocationTrackerInterface& loc,
-                           StringPiece unknown_name,
-                           StringPiece message) {
+  void InvalidName(const converter::LocationTrackerInterface& loc,
+                   StringPiece unknown_name,
+                   StringPiece message) override {
     string loc_string = GetLocString(loc);
     if (!loc_string.empty()) {
       loc_string.append(" ");
@@ -141,17 +141,17 @@ class StatusErrorListener : public converter::ErrorListener {
                        StrCat(loc_string, unknown_name, ": ", message));
   }
 
-  virtual void InvalidValue(const converter::LocationTrackerInterface& loc,
-                            StringPiece type_name,
-                            StringPiece value) {
+  void InvalidValue(const converter::LocationTrackerInterface& loc,
+                    StringPiece type_name,
+                    StringPiece value) override {
     status_ = util::Status(
         util::error::INVALID_ARGUMENT,
         StrCat(GetLocString(loc), ": invalid value ", string(value),
                      " for type ", string(type_name)));
   }
 
-  virtual void MissingField(const converter::LocationTrackerInterface& loc,
-                            StringPiece missing_name) {
+  void MissingField(const converter::LocationTrackerInterface& loc,
+                    StringPiece missing_name) override {
     status_ = util::Status(util::error::INVALID_ARGUMENT,
                              StrCat(GetLocString(loc), ": missing field ",
                                           string(missing_name)));
@@ -184,6 +184,8 @@ util::Status JsonToBinaryStream(TypeResolver* resolver,
   StatusErrorListener listener;
   converter::ProtoStreamObjectWriter::Options proto_writer_options;
   proto_writer_options.ignore_unknown_fields = options.ignore_unknown_fields;
+  proto_writer_options.ignore_unknown_enum_values =
+      options.ignore_unknown_fields;
   converter::ProtoStreamObjectWriter proto_writer(resolver, type, &sink,
                                                   &listener,
                                                   proto_writer_options);
@@ -215,8 +217,7 @@ util::Status JsonToBinaryString(TypeResolver* resolver,
 namespace {
 const char* kTypeUrlPrefix = "type.googleapis.com";
 TypeResolver* generated_type_resolver_ = NULL;
-GOOGLE_PROTOBUF_NAMESPACE_ID::internal::once_flag
-    generated_type_resolver_init_;
+PROTOBUF_NAMESPACE_ID::internal::once_flag generated_type_resolver_init_;
 
 string GetTypeUrl(const Message& message) {
   return string(kTypeUrlPrefix) + "/" + message.GetDescriptor()->full_name();
@@ -231,8 +232,8 @@ void InitGeneratedTypeResolver() {
 }
 
 TypeResolver* GetGeneratedTypeResolver() {
-  GOOGLE_PROTOBUF_NAMESPACE_ID::internal::call_once(
-      generated_type_resolver_init_, InitGeneratedTypeResolver);
+  PROTOBUF_NAMESPACE_ID::internal::call_once(generated_type_resolver_init_,
+                                             InitGeneratedTypeResolver);
   return generated_type_resolver_;
 }
 }  // namespace
