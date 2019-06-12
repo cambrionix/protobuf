@@ -108,7 +108,7 @@ struct PROTOBUF_EXPORT FieldMetadata {
     kStringPieceType = 20,
     kInlinedType = 21,
     kNumTypes = 21,
-    kSpecial = kNumTypes * kNumTypeClasses,
+    kSpecial = static_cast<int>(kNumTypes) * static_cast<int>(kNumTypeClasses),
   };
 
   static int CalculateType(int fundamental_type, FieldTypeClass type_class);
