@@ -42,6 +42,7 @@
 
 #include <google/protobuf/stubs/logging.h>
 #include <google/protobuf/stubs/stl_util.h>
+#include <google/protobuf/io/strtod.h>
 
 #ifdef _WIN32
 // MSVC has only _snprintf, not snprintf.
@@ -1115,10 +1116,12 @@ char* FastUInt64ToBufferLeft(uint64 u64, char* buffer) {
 }
 
 char* FastInt64ToBufferLeft(int64 i, char* buffer) {
-  uint64 u = i;
+  uint64 u = 0;
   if (i < 0) {
     *buffer++ = '-';
-    u = -i;
+    u -= i;
+  } else {
+    u = i;
   }
   return FastUInt64ToBufferLeft(u, buffer);
 }
@@ -1287,7 +1290,7 @@ char* DoubleToBuffer(double value, char* buffer) {
   // of a double.  This long double may have extra bits that make it compare
   // unequal to "value" even though it would be exactly equal if it were
   // truncated to a double.
-  volatile double parsed_value = strtod(buffer, nullptr);
+  volatile double parsed_value = io::NoLocaleStrtod(buffer, nullptr);
   if (parsed_value != value) {
     int snprintf_result =
       snprintf(buffer, kDoubleToBufferSize, "%.*g", DBL_DIG+2, value);
@@ -1339,7 +1342,7 @@ bool safe_strtof(const char* str, float* value) {
   char* endptr;
   errno = 0;  // errno only gets set on errors
 #if defined(_WIN32) || defined (__hpux)  // has no strtof()
-  *value = strtod(str, &endptr);
+  *value = io::NoLocaleStrtod(str, &endptr);
 #else
   *value = strtof(str, &endptr);
 #endif
@@ -1348,7 +1351,7 @@ bool safe_strtof(const char* str, float* value) {
 
 bool safe_strtod(const char* str, double* value) {
   char* endptr;
-  *value = strtod(str, &endptr);
+  *value = io::NoLocaleStrtod(str, &endptr);
   if (endptr != str) {
     while (ascii_isspace(*endptr)) ++endptr;
   }

@@ -32,6 +32,7 @@ package com.google.protobuf.util;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.BaseEncoding;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -226,7 +227,7 @@ public class JsonFormat {
       return new Printer(
           registry,
           false,
-          fieldsToAlwaysOutput,
+          Collections.unmodifiableSet(new HashSet<>(fieldsToAlwaysOutput)),
           preservingProtoFieldNames,
           omittingInsignificantWhitespace,
           printingEnumsAsInts,
@@ -447,11 +448,16 @@ public class JsonFormat {
     }
 
     /**
-     * Find a type by its full name. Returns null if it cannot be found in
-     * this {@link TypeRegistry}.
+     * Find a type by its full name. Returns null if it cannot be found in this {@link
+     * TypeRegistry}.
      */
     public Descriptor find(String name) {
       return types.get(name);
+    }
+
+    /* @Nullable */
+    Descriptor getDescriptorForTypeUrl(String typeUrl) throws InvalidProtocolBufferException {
+      return find(getTypeName(typeUrl));
     }
 
     private final Map<String, Descriptor> types;
@@ -460,16 +466,16 @@ public class JsonFormat {
       this.types = types;
     }
 
-    /**
-     * A Builder is used to build {@link TypeRegistry}.
-     */
+
+    /** A Builder is used to build {@link TypeRegistry}. */
     public static class Builder {
       private Builder() {}
 
       /**
-       * Adds a message type and all types defined in the same .proto file as
-       * well as all transitively imported .proto files to this {@link Builder}.
+       * Adds a message type and all types defined in the same .proto file as well as all
+       * transitively imported .proto files to this {@link Builder}.
        */
+      @CanIgnoreReturnValue
       public Builder add(Descriptor messageType) {
         if (types == null) {
           throw new IllegalStateException("A TypeRegistry.Builer can only be used once.");
@@ -479,9 +485,10 @@ public class JsonFormat {
       }
 
       /**
-       * Adds message types and all types defined in the same .proto file as
-       * well as all transitively imported .proto files to this {@link Builder}.
+       * Adds message types and all types defined in the same .proto file as well as all
+       * transitively imported .proto files to this {@link Builder}.
        */
+      @CanIgnoreReturnValue
       public Builder add(Iterable<Descriptor> messageTypes) {
         if (types == null) {
           throw new IllegalStateException("A TypeRegistry.Builder can only be used once.");
@@ -798,15 +805,14 @@ public class JsonFormat {
         throw new InvalidProtocolBufferException("Invalid Any type.");
       }
       String typeUrl = (String) message.getField(typeUrlField);
-      String typeName = getTypeName(typeUrl);
-      Descriptor type = registry.find(typeName);
+      Descriptor type = registry.getDescriptorForTypeUrl(typeUrl);
       if (type == null) {
         throw new InvalidProtocolBufferException("Cannot find type for url: " + typeUrl);
       }
       ByteString content = (ByteString) message.getField(valueField);
       Message contentMessage =
           DynamicMessage.getDefaultInstance(type).getParserForType().parseFrom(content);
-      WellKnownTypePrinter printer = wellKnownTypePrinters.get(typeName);
+      WellKnownTypePrinter printer = wellKnownTypePrinters.get(getTypeName(typeUrl));
       if (printer != null) {
         // If the type is one of the well-known types, we use a special
         // formatting.
@@ -1440,7 +1446,7 @@ public class JsonFormat {
         throw new InvalidProtocolBufferException("Missing type url when parsing: " + json);
       }
       String typeUrl = typeUrlElement.getAsString();
-      Descriptor contentType = registry.find(getTypeName(typeUrl));
+      Descriptor contentType = registry.getDescriptorForTypeUrl(typeUrl);
       if (contentType == null) {
         throw new InvalidProtocolBufferException("Cannot resolve type: " + typeUrl);
       }

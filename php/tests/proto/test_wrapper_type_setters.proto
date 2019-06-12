@@ -19,4 +19,19 @@ message TestWrapperSetters {
     google.protobuf.DoubleValue double_value_oneof = 10;
     google.protobuf.StringValue string_value_oneof = 11;
   }
+
+  repeated google.protobuf.StringValue repeated_string_value = 12;
+
+  map<string, google.protobuf.StringValue> map_string_value = 13;
+}
+
+message TestWrapperAccessorConflicts {
+  int32 normal_vs_wrapper_value = 1;
+  google.protobuf.Int32Value normal_vs_wrapper = 2;
+
+  int32 normal_vs_normal_value = 3;
+  int32 normal_vs_normal = 4;
+
+  google.protobuf.Int32Value wrapper_vs_wrapper_value = 5;
+  google.protobuf.Int32Value wrapper_vs_wrapper = 6;
 }

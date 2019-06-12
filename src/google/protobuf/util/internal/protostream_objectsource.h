@@ -37,23 +37,17 @@
 
 #include <google/protobuf/stubs/common.h>
 #include <google/protobuf/type.pb.h>
+#include <google/protobuf/util/internal/type_info.h>
 #include <google/protobuf/util/internal/object_source.h>
 #include <google/protobuf/util/internal/object_writer.h>
-#include <google/protobuf/util/internal/type_info.h>
 #include <google/protobuf/util/type_resolver.h>
 #include <google/protobuf/stubs/stringpiece.h>
 #include <google/protobuf/stubs/hash.h>
 #include <google/protobuf/stubs/status.h>
 #include <google/protobuf/stubs/statusor.h>
 
-#include <google/protobuf/port_def.inc>
 
-namespace google {
-namespace protobuf {
-class Field;
-class Type;
-}  // namespace protobuf
-}  // namespace google
+#include <google/protobuf/port_def.inc>
 
 namespace google {
 namespace protobuf {
@@ -155,9 +149,9 @@ class PROTOBUF_EXPORT ProtoStreamObjectSource : public ObjectSource {
       const google::protobuf::Type& type, uint32 tag) const;
 
   // Renders a field value to the ObjectWriter.
-  util::Status RenderField(const google::protobuf::Field* field,
-                             StringPiece field_name,
-                             ObjectWriter* ow) const;
+  virtual util::Status RenderField(const google::protobuf::Field* field,
+                                     StringPiece field_name,
+                                     ObjectWriter* ow) const;
 
   // Reads field value according to Field spec in 'field' and returns the read
   // value as string. This only works for primitive datatypes (no message
@@ -190,6 +184,7 @@ class PROTOBUF_EXPORT ProtoStreamObjectSource : public ObjectSource {
   // {tag item1 tag item2 tag item3}.
   util::Status RenderPacked(const google::protobuf::Field* field,
                               ObjectWriter* ow) const;
+
 
   // Renders a google.protobuf.Timestamp value to ObjectWriter
   static util::Status RenderTimestamp(const ProtoStreamObjectSource* os,

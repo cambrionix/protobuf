@@ -36,6 +36,7 @@ import static com.google.common.math.LongMath.checkedAdd;
 import static com.google.common.math.LongMath.checkedMultiply;
 import static com.google.common.math.LongMath.checkedSubtract;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
 import java.text.ParseException;
@@ -111,16 +112,17 @@ public final class Timestamps {
       };
 
   /**
-   * Returns a {@link Comparator} for {@link Timestamp}s which sorts in increasing chronological
-   * order. Nulls and invalid {@link Timestamp}s are not allowed (see {@link #isValid}).
+   * Returns a {@link Comparator} for {@link Timestamp Timestamps} which sorts in increasing
+   * chronological order. Nulls and invalid {@link Timestamp Timestamps} are not allowed (see
+   * {@link #isValid}).
    */
   public static Comparator<Timestamp> comparator() {
     return COMPARATOR;
   }
 
   /**
-   * Compares two timestamps. The value returned is identical to what would be returned by:
-   * {@code Timestamps.comparator().compare(x, y)}.
+   * Compares two timestamps. The value returned is identical to what would be returned by: {@code
+   * Timestamps.comparator().compare(x, y)}.
    *
    * @return the value {@code 0} if {@code x == y}; a value less than {@code 0} if {@code x < y};
    *     and a value greater than {@code 0} if {@code x > y}
@@ -162,16 +164,29 @@ public final class Timestamps {
   }
 
   /** Throws an {@link IllegalArgumentException} if the given {@link Timestamp} is not valid. */
+  @CanIgnoreReturnValue
   public static Timestamp checkValid(Timestamp timestamp) {
     long seconds = timestamp.getSeconds();
     int nanos = timestamp.getNanos();
     if (!isValid(seconds, nanos)) {
-        throw new IllegalArgumentException(String.format(
-            "Timestamp is not valid. See proto definition for valid values. "
-            + "Seconds (%s) must be in range [-62,135,596,800, +253,402,300,799]. "
-            + "Nanos (%s) must be in range [0, +999,999,999].", seconds, nanos));
+      throw new IllegalArgumentException(
+          String.format(
+              "Timestamp is not valid. See proto definition for valid values. "
+                  + "Seconds (%s) must be in range [-62,135,596,800, +253,402,300,799]. "
+                  + "Nanos (%s) must be in range [0, +999,999,999].",
+              seconds, nanos));
     }
     return timestamp;
+  }
+
+  /**
+   * Builds the given builder and throws an {@link IllegalArgumentException} if it is not valid. See
+   * {@link #checkValid(Timestamp)}.
+   *
+   * @return A valid, built {@link Timestamp}.
+   */
+  public static Timestamp checkValid(Timestamp.Builder timestampBuilder) {
+    return checkValid(timestampBuilder.build());
   }
 
   /**

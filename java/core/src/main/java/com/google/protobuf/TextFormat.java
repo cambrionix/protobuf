@@ -1127,7 +1127,6 @@ public final class TextFormat {
     PARSER.merge(input, builder);
   }
 
-
   /**
    * Parse a text-format message from {@code input}.
    *
@@ -1167,7 +1166,6 @@ public final class TextFormat {
     PARSER.merge(input, extensionRegistry, builder);
   }
 
-
   /**
    * Parse a text-format message from {@code input}. Extensions will be recognized if they are
    * registered in {@code extensionRegistry}.
@@ -1185,7 +1183,6 @@ public final class TextFormat {
     T output = (T) builder.build();
     return output;
   }
-
 
 
   /**
@@ -1215,36 +1212,6 @@ public final class TextFormat {
       ALLOW_SINGULAR_OVERWRITES,
       /** An error is issued. */
       FORBID_SINGULAR_OVERWRITES
-    }
-
-    /**
-     * Determines how to deal with repeated values for singular Message fields. For example,
-     * given a field "foo" containing subfields "baz" and "qux":
-     *
-     * <ul>
-     *   <li>"foo { baz: 1 } foo { baz: 2 }", or
-     *   <li>"foo { baz: 1 } foo { qux: 2 }"
-     * </ul>
-     */
-    public enum MergingStyle {
-      /**
-       * Merge the values in standard protobuf fashion:
-       *
-       * <ul>
-       *   <li>"foo { baz: 2 }" and
-       *   <li>"foo { baz: 1, qux: 2 }", respectively.
-       * </ul>
-       */
-      RECURSIVE,
-      /**
-       * Later values overwrite ("clobber") previous values:
-       *
-       * <ul>
-       *   <li>"foo { baz: 2 }" and
-       *   <li>"foo { qux: 2 }", respectively.
-       * </ul>
-       */
-      NON_RECURSIVE
     }
 
     private final boolean allowUnknownFields;
@@ -1280,6 +1247,18 @@ public final class TextFormat {
           SingularOverwritePolicy.ALLOW_SINGULAR_OVERWRITES;
       private TextFormatParseInfoTree.Builder parseInfoTreeBuilder = null;
 
+      /**
+       * Set whether this parser will allow unknown fields. By default, an exception is thrown if an
+       * unknown field is encountered. If this is set, the parser will only log a warning. Allow
+       * unknown fields will also allow unknown extensions.
+       *
+       * <p>Use of this parameter is discouraged which may hide some errors (e.g.
+       * spelling error on field name).
+       */
+      public Builder setAllowUnknownFields(boolean allowUnknownFields) {
+        this.allowUnknownFields = allowUnknownFields;
+        return this;
+      }
 
       /**
        * Set whether this parser will allow unknown extensions. By default, an
@@ -1347,7 +1326,6 @@ public final class TextFormat {
 
       merge(toStringBuilder(input), extensionRegistry, builder);
     }
-
 
 
     private static final int BUFFER_SIZE = 4096;
@@ -1435,12 +1413,11 @@ public final class TextFormat {
       List<UnknownField> unknownFields = new ArrayList<UnknownField>();
 
       while (!tokenizer.atEnd()) {
-        mergeField(tokenizer, extensionRegistry, target, MergingStyle.RECURSIVE, unknownFields);
+        mergeField(tokenizer, extensionRegistry, target, unknownFields);
       }
 
       checkUnknownFields(unknownFields);
     }
-
 
 
     /** Parse a single field from {@code tokenizer} and merge it into {@code builder}. */
@@ -1448,7 +1425,6 @@ public final class TextFormat {
         final Tokenizer tokenizer,
         final ExtensionRegistry extensionRegistry,
         final MessageReflection.MergeTarget target,
-        final MergingStyle mergingStyle,
         List<UnknownField> unknownFields)
         throws ParseException {
       mergeField(
@@ -1456,7 +1432,6 @@ public final class TextFormat {
           extensionRegistry,
           target,
           parseInfoTreeBuilder,
-          mergingStyle,
           unknownFields);
     }
 
@@ -1466,7 +1441,6 @@ public final class TextFormat {
         final ExtensionRegistry extensionRegistry,
         final MessageReflection.MergeTarget target,
         TextFormatParseInfoTree.Builder parseTreeBuilder,
-        final MergingStyle mergingStyle,
         List<UnknownField> unknownFields)
         throws ParseException {
       FieldDescriptor field = null;
@@ -1486,14 +1460,15 @@ public final class TextFormat {
         extension = target.findExtensionByName(extensionRegistry, name.toString());
 
         if (extension == null) {
-          String message = (tokenizer.getPreviousLine() + 1)
-                           + ":"
-                           + (tokenizer.getPreviousColumn() + 1)
-                           + ":\t"
-                           + type.getFullName()
-                           + ".["
-                           + name
-                           + "]";
+          String message =
+              (tokenizer.getPreviousLine() + 1)
+                  + ":"
+                  + (tokenizer.getPreviousColumn() + 1)
+                  + ":\t"
+                  + type.getFullName()
+                  + ".["
+                  + name
+                  + "]";
           unknownFields.add(new UnknownField(message, UnknownField.Type.EXTENSION));
         } else {
           if (extension.descriptor.getContainingType() != type) {
@@ -1573,7 +1548,6 @@ public final class TextFormat {
               field,
               extension,
               childParseTreeBuilder,
-              mergingStyle,
               unknownFields);
         } else {
           consumeFieldValues(
@@ -1583,7 +1557,6 @@ public final class TextFormat {
               field,
               extension,
               parseTreeBuilder,
-              mergingStyle,
               unknownFields);
         }
       } else {
@@ -1595,7 +1568,6 @@ public final class TextFormat {
             field,
             extension,
             parseTreeBuilder,
-            mergingStyle,
             unknownFields);
       }
 
@@ -1620,7 +1592,6 @@ public final class TextFormat {
         final FieldDescriptor field,
         final ExtensionRegistry.ExtensionInfo extension,
         final TextFormatParseInfoTree.Builder parseTreeBuilder,
-        final MergingStyle mergingStyle,
         List<UnknownField> unknownFields)
         throws ParseException {
       // Support specifying repeated field values as a comma-separated list.
@@ -1635,7 +1606,6 @@ public final class TextFormat {
                 field,
                 extension,
                 parseTreeBuilder,
-                mergingStyle,
                 unknownFields);
             if (tokenizer.tryConsume("]")) {
               // End of list.
@@ -1652,7 +1622,6 @@ public final class TextFormat {
             field,
             extension,
             parseTreeBuilder,
-            mergingStyle,
             unknownFields);
       }
     }
@@ -1665,7 +1634,6 @@ public final class TextFormat {
         final FieldDescriptor field,
         final ExtensionRegistry.ExtensionInfo extension,
         final TextFormatParseInfoTree.Builder parseTreeBuilder,
-        final MergingStyle mergingStyle,
         List<UnknownField> unknownFields)
         throws ParseException {
       if (singularOverwritePolicy == SingularOverwritePolicy.FORBID_SINGULAR_OVERWRITES
@@ -1698,34 +1666,18 @@ public final class TextFormat {
           endToken = "}";
         }
 
-        final MessageReflection.MergeTarget subField;
-        Message defaultInstance = (extension == null) ? null : extension.defaultInstance;
-        switch (mergingStyle) {
-          case RECURSIVE:
-            subField = target.newMergeTargetForField(field, defaultInstance);
-            break;
-          case NON_RECURSIVE:
-            subField = target.newEmptyTargetForField(field, defaultInstance);
-            break;
-          default:
-            throw new AssertionError();
-        }
+          Message defaultInstance = (extension == null) ? null : extension.defaultInstance;
+          MessageReflection.MergeTarget subField =
+              target.newMergeTargetForField(field, defaultInstance);
 
-        while (!tokenizer.tryConsume(endToken)) {
-          if (tokenizer.atEnd()) {
-            throw tokenizer.parseException("Expected \"" + endToken + "\".");
+          while (!tokenizer.tryConsume(endToken)) {
+            if (tokenizer.atEnd()) {
+              throw tokenizer.parseException("Expected \"" + endToken + "\".");
+            }
+            mergeField(tokenizer, extensionRegistry, subField, parseTreeBuilder, unknownFields);
           }
-          mergeField(
-              tokenizer,
-              extensionRegistry,
-              subField,
-              parseTreeBuilder,
-              mergingStyle,
-              unknownFields);
-        }
 
-        value = subField.finish();
-
+          value = subField.finish();
       } else {
         switch (field.getType()) {
           case INT32:
@@ -1830,6 +1782,7 @@ public final class TextFormat {
         target.setField(field, value);
       }
     }
+
 
     /** Skips the next field including the field's name and value. */
     private void skipField(Tokenizer tokenizer) throws ParseException {

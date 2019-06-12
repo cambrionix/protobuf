@@ -16,6 +16,44 @@ use Google\Protobuf\UInt64Value;
 
 class WrapperTypeSettersTest extends TestBase
 {
+    public function testConflictNormalVsWrapper()
+    {
+        $m = new Foo\TestWrapperAccessorConflicts();
+
+        $m->setNormalVsWrapperValue1(1);
+        $this->assertSame(1, $m->getNormalVsWrapperValue1());
+
+        $m->setNormalVsWrapperValue2(1);
+        $this->assertSame(1, $m->getNormalVsWrapperValue2());
+
+        $wrapper = new Int32Value(["value" => 1]);
+        $m->setNormalVsWrapper($wrapper);
+        $this->assertSame(1, $m->getNormalVsWrapper()->getValue());
+    }
+
+    public function testConflictNormalVsNormal()
+    {
+        $m = new Foo\TestWrapperAccessorConflicts();
+
+        $m->setNormalVsNormalValue(1);
+        $this->assertSame(1, $m->getNormalVsNormalValue());
+
+        $m->setNormalVsNormal(1);
+        $this->assertSame(1, $m->getNormalVsNormal());
+    }
+
+    public function testConflictWrapperVsWrapper()
+    {
+        $m = new Foo\TestWrapperAccessorConflicts();
+
+        $m->setWrapperVsWrapperValueValue(1);
+        $this->assertSame(1, $m->getWrapperVsWrapperValueValue());
+
+        $wrapper = new Int32Value(["value" => 1]);
+        $m->setWrapperVsWrapperValue5($wrapper);
+        $this->assertSame(1, $m->getWrapperVsWrapperValue5()->getValue());
+    }
+
     /**
      * @dataProvider gettersAndSettersDataProvider
      */
@@ -223,6 +261,90 @@ class WrapperTypeSettersTest extends TestBase
             [TestWrapperSetters::class, BoolValue::class, 'bool_value', 'getBoolValue', true],
             [TestWrapperSetters::class, StringValue::class, 'string_value', 'getStringValue', "eight"],
             [TestWrapperSetters::class, BytesValue::class, 'bytes_value', 'getBytesValue', "nine"],
+        ];
+    }
+
+    /**
+     * @dataProvider constructorWithRepeatedWrapperTypeDataProvider
+     */
+    public function testConstructorWithRepeatedWrapperType($wrapperField, $getter, $value)
+    {
+        $actualInstance = new TestWrapperSetters([$wrapperField => $value]);
+        foreach ($actualInstance->$getter() as $key => $actualWrapperValue) {
+            $actualInnerValue = $actualWrapperValue->getValue();
+            $expectedElement = $value[$key];
+            if (is_object($expectedElement) && is_a($expectedElement, '\Google\Protobuf\StringValue')) {
+                $expectedInnerValue = $expectedElement->getValue();
+            } else {
+                $expectedInnerValue = $expectedElement;
+            }
+            $this->assertEquals($expectedInnerValue, $actualInnerValue);
+        }
+    }
+
+    public function constructorWithRepeatedWrapperTypeDataProvider()
+    {
+        $sv7 = new StringValue(['value' => 'seven']);
+        $sv8 = new StringValue(['value' => 'eight']);
+
+        $testWrapperSetters = new TestWrapperSetters();
+        $testWrapperSetters->setRepeatedStringValue([$sv7, $sv8]);
+        $repeatedField = $testWrapperSetters->getRepeatedStringValue();
+
+        return [
+            ['repeated_string_value', 'getRepeatedStringValue', []],
+            ['repeated_string_value', 'getRepeatedStringValue', [$sv7]],
+            ['repeated_string_value', 'getRepeatedStringValue', [$sv7, $sv8]],
+            ['repeated_string_value', 'getRepeatedStringValue', ['seven']],
+            ['repeated_string_value', 'getRepeatedStringValue', [7]],
+            ['repeated_string_value', 'getRepeatedStringValue', [7.7]],
+            ['repeated_string_value', 'getRepeatedStringValue', ['seven', 'eight']],
+            ['repeated_string_value', 'getRepeatedStringValue', [$sv7, 'eight']],
+            ['repeated_string_value', 'getRepeatedStringValue', ['seven', $sv8]],
+            ['repeated_string_value', 'getRepeatedStringValue', $repeatedField],
+        ];
+    }
+
+    /**
+     * @dataProvider constructorWithMapWrapperTypeDataProvider
+     */
+    public function testConstructorWithMapWrapperType($wrapperField, $getter, $value)
+    {
+        $actualInstance = new TestWrapperSetters([$wrapperField => $value]);
+        foreach ($actualInstance->$getter() as $key => $actualWrapperValue) {
+            $actualInnerValue = $actualWrapperValue->getValue();
+            $expectedElement = $value[$key];
+            if (is_object($expectedElement) && is_a($expectedElement, '\Google\Protobuf\StringValue')) {
+                $expectedInnerValue = $expectedElement->getValue();
+            } elseif (is_object($expectedElement) && is_a($expectedElement, '\Google\Protobuf\Internal\MapEntry')) {
+                $expectedInnerValue = $expectedElement->getValue()->getValue();
+            } else {
+                $expectedInnerValue = $expectedElement;
+            }
+            $this->assertEquals($expectedInnerValue, $actualInnerValue);
+        }
+    }
+
+    public function constructorWithMapWrapperTypeDataProvider()
+    {
+        $sv7 = new StringValue(['value' => 'seven']);
+        $sv8 = new StringValue(['value' => 'eight']);
+
+        $testWrapperSetters = new TestWrapperSetters();
+        $testWrapperSetters->setMapStringValue(['key' => $sv7, 'key2' => $sv8]);
+        $mapField = $testWrapperSetters->getMapStringValue();
+
+        return [
+            ['map_string_value', 'getMapStringValue', []],
+            ['map_string_value', 'getMapStringValue', ['key' => $sv7]],
+            ['map_string_value', 'getMapStringValue', ['key' => $sv7, 'key2' => $sv8]],
+            ['map_string_value', 'getMapStringValue', ['key' => 'seven']],
+            ['map_string_value', 'getMapStringValue', ['key' => 7]],
+            ['map_string_value', 'getMapStringValue', ['key' => 7.7]],
+            ['map_string_value', 'getMapStringValue', ['key' => 'seven', 'key2' => 'eight']],
+            ['map_string_value', 'getMapStringValue', ['key' => $sv7, 'key2' => 'eight']],
+            ['map_string_value', 'getMapStringValue', ['key' => 'seven', 'key2' => $sv8]],
+            ['map_string_value', 'getMapStringValue', $mapField],
         ];
     }
 }

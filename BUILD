@@ -19,7 +19,7 @@ config_setting(
 # ZLIB configuration
 ################################################################################
 
-ZLIB_DEPS = ["//external:zlib"]
+ZLIB_DEPS = ["@zlib//:zlib"]
 
 ################################################################################
 # Protobuf Runtime Library
@@ -49,12 +49,10 @@ COPTS = select({
     "//conditions:default": [
         "-DHAVE_PTHREAD",
         "-DHAVE_ZLIB",
-        "-Wall",
         "-Woverloaded-virtual",
         "-Wno-sign-compare",
         "-Wno-unused-function",
         # Prevents ISO C++ const string assignment warnings for pyext sources.
-        "-Wno-writable-strings",
         "-Wno-write-strings",
     ],
 })
@@ -70,9 +68,25 @@ config_setting(
     },
 )
 
+config_setting(
+    name = "android-libcpp",
+    values = {
+        "crosstool_top": "@androidndk//:toolchain-libcpp",
+    },
+)
+
+config_setting(
+    name = "android-gnu-libstdcpp",
+    values = {
+        "crosstool_top": "@androidndk//:toolchain-gnu-libstdcpp",
+    },
+)
+
 # Android and MSVC builds do not need to link in a separate pthread library.
 LINK_OPTS = select({
     ":android": [],
+    ":android-libcpp": [],
+    ":android-gnu-libstdcpp": [],
     ":msvc": [
         # Suppress linker warnings about files with no symbols defined.
         "-ignore:4221",
@@ -93,21 +107,23 @@ cc_library(
     name = "protobuf_lite",
     srcs = [
         # AUTOGEN(protobuf_lite_srcs)
+        "src/google/protobuf/any_lite.cc",
         "src/google/protobuf/arena.cc",
-        "src/google/protobuf/arenastring.cc",
         "src/google/protobuf/extension_set.cc",
         "src/google/protobuf/generated_message_table_driven_lite.cc",
         "src/google/protobuf/generated_message_util.cc",
         "src/google/protobuf/implicit_weak_message.cc",
         "src/google/protobuf/io/coded_stream.cc",
+        "src/google/protobuf/io/strtod.cc",
+        "src/google/protobuf/io/io_win32.cc",
         "src/google/protobuf/io/zero_copy_stream.cc",
         "src/google/protobuf/io/zero_copy_stream_impl_lite.cc",
         "src/google/protobuf/message_lite.cc",
+        "src/google/protobuf/parse_context.cc",
         "src/google/protobuf/repeated_field.cc",
         "src/google/protobuf/stubs/bytestream.cc",
         "src/google/protobuf/stubs/common.cc",
         "src/google/protobuf/stubs/int128.cc",
-        "src/google/protobuf/stubs/io_win32.cc",
         "src/google/protobuf/stubs/status.cc",
         "src/google/protobuf/stubs/statusor.cc",
         "src/google/protobuf/stubs/stringpiece.cc",
@@ -150,7 +166,6 @@ cc_library(
         "src/google/protobuf/generated_message_table_driven.cc",
         "src/google/protobuf/io/gzip_stream.cc",
         "src/google/protobuf/io/printer.cc",
-        "src/google/protobuf/io/strtod.cc",
         "src/google/protobuf/io/tokenizer.cc",
         "src/google/protobuf/io/zero_copy_stream_impl.cc",
         "src/google/protobuf/map_field.cc",
@@ -498,7 +513,7 @@ cc_binary(
 
 cc_test(
     name = "win32_test",
-    srcs = ["src/google/protobuf/stubs/io_win32_unittest.cc"],
+    srcs = ["src/google/protobuf/io/io_win32_unittest.cc"],
     deps = [
         ":protobuf_lite",
         "//external:gtest_main",
@@ -514,7 +529,6 @@ cc_test(
         "src/google/protobuf/arena_unittest.cc",
         "src/google/protobuf/arenastring_unittest.cc",
         "src/google/protobuf/compiler/annotation_test_util.cc",
-        "src/google/protobuf/compiler/command_line_interface_unittest.cc",
         "src/google/protobuf/compiler/cpp/cpp_bootstrap_unittest.cc",
         "src/google/protobuf/compiler/cpp/cpp_move_unittest.cc",
         "src/google/protobuf/compiler/cpp/cpp_plugin_unittest.cc",
@@ -538,6 +552,7 @@ cc_test(
         "src/google/protobuf/extension_set_unittest.cc",
         "src/google/protobuf/generated_message_reflection_unittest.cc",
         "src/google/protobuf/io/coded_stream_unittest.cc",
+        "src/google/protobuf/io/io_win32_unittest.cc",
         "src/google/protobuf/io/printer_unittest.cc",
         "src/google/protobuf/io/tokenizer_unittest.cc",
         "src/google/protobuf/io/zero_copy_stream_unittest.cc",
@@ -557,7 +572,6 @@ cc_test(
         "src/google/protobuf/stubs/bytestream_unittest.cc",
         "src/google/protobuf/stubs/common_unittest.cc",
         "src/google/protobuf/stubs/int128_unittest.cc",
-        "src/google/protobuf/stubs/io_win32_unittest.cc",
         "src/google/protobuf/stubs/status_test.cc",
         "src/google/protobuf/stubs/statusor_test.cc",
         "src/google/protobuf/stubs/stringpiece_unittest.cc",
@@ -583,7 +597,13 @@ cc_test(
         "src/google/protobuf/util/type_resolver_util_test.cc",
         "src/google/protobuf/well_known_types_unittest.cc",
         "src/google/protobuf/wire_format_unittest.cc",
-    ],
+    ] + select({
+        "//conditions:default" : [
+            # Doesn't pass on Windows with MSVC
+            "src/google/protobuf/compiler/command_line_interface_unittest.cc",
+        ],
+        ":msvc": []
+    }),
     copts = COPTS,
     data = [
         ":test_plugin",
@@ -635,6 +655,7 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "protobuf_java",
+        "//external:error_prone_annotations",
         "//external:gson",
         "//external:guava",
     ],

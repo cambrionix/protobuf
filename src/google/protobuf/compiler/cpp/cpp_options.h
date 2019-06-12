@@ -43,8 +43,8 @@ class AccessInfoMap;
 namespace cpp {
 
 enum class EnforceOptimizeMode {
-  kNoEnforcement, // Use the runtime specified by the file specific options.
-  kSpeed, // This is the full runtime.
+  kNoEnforcement,  // Use the runtime specified by the file specific options.
+  kSpeed,          // This is the full runtime.
   kLiteRuntime,
 };
 
@@ -72,6 +72,5 @@ struct Options {
 }  // namespace compiler
 }  // namespace protobuf
 }  // namespace google
-
 
 #endif  // GOOGLE_PROTOBUF_COMPILER_CPP_OPTIONS_H__

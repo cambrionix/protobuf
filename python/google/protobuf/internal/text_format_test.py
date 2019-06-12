@@ -268,13 +268,6 @@ class TextFormatMessageToStringTests(TextFormatBase):
   def testPrintFloatFormat(self, message_module):
     # Check that float_format argument is passed to sub-message formatting.
     message = message_module.NestedTestAllTypes()
-    # We use 1.25 as it is a round number in binary.  The proto 32-bit float
-    # will not gain additional imprecise digits as a 64-bit Python float and
-    # show up in its str.  32-bit 1.2 is noisy when extended to 64-bit:
-    #  >>> struct.unpack('f', struct.pack('f', 1.2))[0]
-    #  1.2000000476837158
-    #  >>> struct.unpack('f', struct.pack('f', 1.25))[0]
-    #  1.25
     message.payload.optional_float = 1.25
     # Check rounding at 15 significant digits
     message.payload.optional_double = -.000003456789012345678
@@ -297,6 +290,31 @@ class TextFormatMessageToStringTests(TextFormatBase):
     self.CompareToGoldenText(
         self.RemoveRedundantZeros(text_message),
         'payload {{ {0} {1} {2} {3} }}'.format(*formatted_fields))
+
+    # 32-bit 1.2 is noisy when extended to 64-bit:
+    #  >>> struct.unpack('f', struct.pack('f', 1.2))[0]
+    #  1.2000000476837158
+    # TODO(jieluo): change to 1.2 with cl/241634942.
+    message.payload.optional_float = 1.2000000476837158
+    formatted_fields = ['optional_float: 1.2',
+                        'optional_double: -3.45678901234568e-6',
+                        'repeated_float: -5642', 'repeated_double: 7.89e-5']
+    text_message = text_format.MessageToString(message, float_format='.7g',
+                                               double_format='.15g')
+    self.CompareToGoldenText(
+        self.RemoveRedundantZeros(text_message),
+        'payload {{\n  {0}\n  {1}\n  {2}\n  {3}\n}}\n'.format(
+            *formatted_fields))
+
+    # Test only set float_format affect both float and double fields.
+    formatted_fields = ['optional_float: 1.2',
+                        'optional_double: -3.456789e-6',
+                        'repeated_float: -5642', 'repeated_double: 7.89e-5']
+    text_message = text_format.MessageToString(message, float_format='.7g')
+    self.CompareToGoldenText(
+        self.RemoveRedundantZeros(text_message),
+        'payload {{\n  {0}\n  {1}\n  {2}\n  {3}\n}}\n'.format(
+            *formatted_fields))
 
   def testMessageToString(self, message_module):
     message = message_module.ForeignMessage()
@@ -497,6 +515,14 @@ class TextFormatParserTests(TextFormatBase):
     text_format.Parse(text, msg2)
     self.assertEqual(msg2.optional_string, u'café')
 
+  def testParseDoubleToFloat(self, message_module):
+    message = message_module.TestAllTypes()
+    text = ('repeated_float: 3.4028235e+39\n'
+            'repeated_float: 1.4028235e-39\n')
+    text_format.Parse(text, message)
+    self.assertEqual(message.repeated_float[0], float('inf'))
+    self.assertAlmostEqual(message.repeated_float[1], 1.4028235e-39)
+
   def testParseExotic(self, message_module):
     message = message_module.TestAllTypes()
     text = ('repeated_int64: -9223372036854775808\n'
@@ -590,6 +616,12 @@ class TextFormatParserTests(TextFormatBase):
     six.assertRaisesRegex(self, text_format.ParseError, (
         r'1:1 : Message type "\w+.TestAllTypes" has no field named '
         r'"unknown_field".'), text_format.Parse, text, message)
+    text = ('optional_int32: 123\n'
+            'unknown_field: 8\n'
+            'optional_nested_message { bb: 45 }')
+    text_format.Parse(text, message, allow_unknown_field=True)
+    self.assertEqual(message.optional_nested_message.bb, 45)
+    self.assertEqual(message.optional_int32, 123)
 
   def testParseBadEnumValue(self, message_module):
     message = message_module.TestAllTypes()
@@ -715,6 +747,24 @@ class TextFormatParserTests(TextFormatBase):
     self.assertEqual(m.optional_string, self._GOLDEN_UNICODE)
     self.assertEqual(m.repeated_bytes[0], self._GOLDEN_BYTES)
 
+  def testParseDuplicateMessages(self, message_module):
+    message = message_module.TestAllTypes()
+    text = ('optional_nested_message { bb: 1 } '
+            'optional_nested_message { bb: 2 }')
+    six.assertRaisesRegex(self, text_format.ParseError, (
+        r'1:59 : Message type "\w+.TestAllTypes" '
+        r'should not have multiple "optional_nested_message" fields.'),
+                          text_format.Parse, text,
+                          message)
+
+  def testParseDuplicateScalars(self, message_module):
+    message = message_module.TestAllTypes()
+    text = ('optional_int32: 42 ' 'optional_int32: 67')
+    six.assertRaisesRegex(self, text_format.ParseError, (
+        r'1:36 : Message type "\w+.TestAllTypes" should not '
+        r'have multiple "optional_int32" fields.'), text_format.Parse, text,
+                          message)
+
 
 @_parameterized.parameters(unittest_pb2, unittest_proto3_arena_pb2)
 class TextFormatMergeTests(TextFormatBase):
@@ -771,6 +821,39 @@ class OnlyWorksWithProto2RightNowTests(TextFormatBase):
     self.CompareToGoldenFile(
         self.RemoveRedundantZeros(text_format.MessageToString(message)),
         'text_format_unittest_data_oneof_implemented.txt')
+
+  def testPrintUnknownFields(self):
+    message = unittest_pb2.TestAllTypes()
+    message.optional_int32 = 101
+    message.optional_double = 102.0
+    message.optional_string = u'hello'
+    message.optional_bytes = b'103'
+    message.optionalgroup.a = 104
+    message.optional_nested_message.bb = 105
+    all_data = message.SerializeToString()
+    empty_message = unittest_pb2.TestEmptyMessage()
+    empty_message.ParseFromString(all_data)
+    self.assertEqual('1: 101\n'
+                     '12: 4636878028842991616\n'
+                     '14: "hello"\n'
+                     '15: "103"\n'
+                     '16 {\n'
+                     '  17: 104\n'
+                     '}\n'
+                     '18 {\n'
+                     '  1: 105\n'
+                     '}\n',
+                     text_format.MessageToString(empty_message,
+                                                 print_unknown_fields=True))
+    self.assertEqual('1: 101 '
+                     '12: 4636878028842991616 '
+                     '14: "hello" '
+                     '15: "103" '
+                     '16 { 17: 104 } '
+                     '18 { 1: 105 }',
+                     text_format.MessageToString(empty_message,
+                                                 print_unknown_fields=True,
+                                                 as_one_line=True))
 
   def testPrintInIndexOrder(self):
     message = unittest_pb2.TestFieldOrderings()
@@ -1293,16 +1376,6 @@ class Proto2Tests(TextFormatBase):
         '"protobuf_unittest.optional_int32_extension" extensions.'),
                           text_format.Parse, text, message)
 
-  def testParseDuplicateMessages(self):
-    message = unittest_pb2.TestAllTypes()
-    text = ('optional_nested_message { bb: 1 } '
-            'optional_nested_message { bb: 2 }')
-    six.assertRaisesRegex(self, text_format.ParseError, (
-        '1:59 : Message type "protobuf_unittest.TestAllTypes" '
-        'should not have multiple "optional_nested_message" fields.'),
-                          text_format.Parse, text,
-                          message)
-
   def testParseDuplicateExtensionMessages(self):
     message = unittest_pb2.TestAllExtensions()
     text = ('[protobuf_unittest.optional_nested_message_extension]: {} '
@@ -1312,14 +1385,6 @@ class Proto2Tests(TextFormatBase):
         'should not have multiple '
         '"protobuf_unittest.optional_nested_message_extension" extensions.'),
                           text_format.Parse, text, message)
-
-  def testParseDuplicateScalars(self):
-    message = unittest_pb2.TestAllTypes()
-    text = ('optional_int32: 42 ' 'optional_int32: 67')
-    six.assertRaisesRegex(self, text_format.ParseError, (
-        '1:36 : Message type "protobuf_unittest.TestAllTypes" should not '
-        'have multiple "optional_int32" fields.'), text_format.Parse, text,
-                          message)
 
   def testParseGroupNotClosed(self):
     message = unittest_pb2.TestAllTypes()
