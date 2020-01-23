@@ -335,7 +335,7 @@ class PROTOBUF_EXPORT Arena final {
   template <typename T>
   PROTOBUF_ALWAYS_INLINE static T* CreateArray(Arena* arena,
                                                size_t num_elements) {
-    static_assert(std::is_pod<T>::value,
+    static_assert(std::is_trivially_constructible<T>::value,
                   "CreateArray requires a trivially constructible type");
     static_assert(std::is_trivially_destructible<T>::value,
                   "CreateArray requires a trivially destructible type");
