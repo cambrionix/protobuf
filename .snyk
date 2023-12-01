@@ -23,4 +23,4 @@ exclude:
     - third_party
     - util
     - src/google/protobuf/testing
-    - src/google/protobuf/*_unittest.*
+    - update_version.py
