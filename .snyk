@@ -1,21 +1,25 @@
-# Ignore anything not related to C++
-ignore:
-  - benchmarks
-  - cmake
-  - conformance
-  - csharp
-  - docs
-  - editors
-  - examples
-  - java
-  - js
-  - kokoro
-  - m4
-  - objectivec
-  - php
-  - protoc-artifacts
-  - python
-  - ruby
-  - third_party
-  - util
-  - src/google/protobuf/testing
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+ignore: {}
+patch: {}
+exclude:
+  global:
+    - benchmarks
+    - cmake
+    - conformance
+    - csharp
+    - docs
+    - editors
+    - examples
+    - java
+    - js
+    - kokoro
+    - m4
+    - objectivec
+    - php
+    - protoc-artifacts
+    - python
+    - ruby
+    - third_party
+    - util
+    - src/google/protobuf/testing
