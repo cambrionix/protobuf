@@ -24,3 +24,25 @@ exclude:
     - util
     - src/google/protobuf/testing
     - update_version.py
+    - src/google/protobuf/arenastring_unittest.cc
+    - src/google/protobuf/arena_unittest.cc
+    - src/google/protobuf/descriptor_database_unittest.cc
+    - src/google/protobuf/descriptor_unittest.cc
+    - src/google/protobuf/dynamic_message_unittest.cc
+    - src/google/protobuf/extension_set_unittest.cc
+    - src/google/protobuf/generated_message_reflection_unittest.cc
+    - src/google/protobuf/lite_arena_unittest.cc
+    - src/google/protobuf/lite_unittest.cc
+    - src/google/protobuf/message_unittest.cc
+    - src/google/protobuf/message_unittest.inc
+    - src/google/protobuf/proto3_arena_lite_unittest.cc
+    - src/google/protobuf/proto3_arena_unittest.cc
+    - src/google/protobuf/proto3_lite_unittest.cc
+    - src/google/protobuf/proto3_lite_unittest.inc
+    - src/google/protobuf/reflection_ops_unittest.cc
+    - src/google/protobuf/repeated_field_reflection_unittest.cc
+    - src/google/protobuf/repeated_field_unittest.cc
+    - src/google/protobuf/text_format_unittest.cc
+    - src/google/protobuf/unknown_field_set_unittest.cc
+    - src/google/protobuf/well_known_types_unittest.cc
+    - src/google/protobuf/wire_format_unittest.cc
