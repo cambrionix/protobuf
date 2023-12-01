@@ -34,7 +34,10 @@ using Google.Protobuf.WellKnownTypes;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using static Google.Protobuf.Reflection.SourceCodeInfo.Types;
 
 namespace Google.Protobuf.Reflection
 {
@@ -54,6 +57,8 @@ namespace Google.Protobuf.Reflection
             ForceReflectionInitialization<Field.Types.Kind>();
             ForceReflectionInitialization<Value.KindOneofCase>();
         }
+
+        private readonly Lazy<Dictionary<IDescriptor, DescriptorDeclaration>> declarations;
 
         private FileDescriptor(ByteString descriptorData, FileDescriptorProto proto, IEnumerable<FileDescriptor> dependencies, DescriptorPool pool, bool allowUnknownDependencies, GeneratedClrTypeInfo generatedCodeInfo)
         {
@@ -77,6 +82,82 @@ namespace Google.Protobuf.Reflection
             Services = DescriptorUtil.ConvertAndMakeReadOnly(proto.Service,
                                                              (service, index) =>
                                                              new ServiceDescriptor(service, this, index));
+
+            declarations = new Lazy<Dictionary<IDescriptor, DescriptorDeclaration>>(CreateDeclarationMap, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        private Dictionary<IDescriptor, DescriptorDeclaration> CreateDeclarationMap()
+        {
+            var dictionary = new Dictionary<IDescriptor, DescriptorDeclaration>();
+            foreach (var location in Proto.SourceCodeInfo?.Location ?? Enumerable.Empty<Location>())
+            {
+                var descriptor = FindDescriptorForPath(location.Path);
+                if (descriptor != null)
+                {
+                    dictionary[descriptor] = DescriptorDeclaration.FromProto(descriptor, location);
+                }
+            }
+            return dictionary;
+        }
+
+        private IDescriptor FindDescriptorForPath(IList<int> path)
+        {
+            // All complete declarations have an even, non-empty path length
+            // (There can be an empty path for a descriptor declaration, but that can't have any comments,
+            // so we currently ignore it.)
+            if (path.Count == 0 || (path.Count & 1) != 0)
+            {
+                return null;
+            }
+            IReadOnlyList<DescriptorBase> topLevelList = GetNestedDescriptorListForField(path[0]);
+            DescriptorBase current = GetDescriptorFromList(topLevelList, path[1]);
+
+            for (int i = 2; current != null && i < path.Count; i += 2)
+            {
+                var list = current.GetNestedDescriptorListForField(path[i]);
+                current = GetDescriptorFromList(list, path[i + 1]);
+            }
+            return current;
+        }
+
+        private DescriptorBase GetDescriptorFromList(IReadOnlyList<DescriptorBase> list, int index)
+        {
+            // This is fine: it may be a newer version of protobuf than we understand, with a new descriptor
+            // field.
+            if (list == null)
+            {
+                return null;
+            }
+            // We *could* return null to silently continue, but this is basically data corruption.
+            if (index < 0 || index >= list.Count)
+            {
+                // We don't have much extra information to give at this point unfortunately. If this becomes a problem,
+                // we can pass in the complete path and report that and the file name.
+                throw new InvalidProtocolBufferException($"Invalid descriptor location path: index out of range");
+            }
+            return list[index];
+        }
+
+        private IReadOnlyList<DescriptorBase> GetNestedDescriptorListForField(int fieldNumber)
+        {
+            switch (fieldNumber)
+            {
+                case FileDescriptorProto.ServiceFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) Services;
+                case FileDescriptorProto.MessageTypeFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) MessageTypes;
+                case FileDescriptorProto.EnumTypeFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) EnumTypes;
+                default:
+                    return null;
+            }
+        }
+
+        internal DescriptorDeclaration GetDeclaration(IDescriptor descriptor)
+        {
+            DescriptorDeclaration declaration;
+            declarations.Value.TryGetValue(descriptor, out declaration);
+            return declaration;
         }
 
         /// <summary>
@@ -111,7 +192,8 @@ namespace Google.Protobuf.Reflection
                     throw new DescriptorValidationException(@this, "Invalid public dependency index.");
                 }
                 string name = proto.Dependency[index];
-                if (!nameToFileMap.TryGetValue(name, out var file))
+                FileDescriptor file;
+                if (!nameToFileMap.TryGetValue(name, out file))
                 {
                     if (!allowUnknownDependencies)
                     {
@@ -334,7 +416,8 @@ namespace Google.Protobuf.Reflection
                 var dependencies = new List<FileDescriptor>();
                 foreach (var dependencyName in proto.Dependency)
                 {
-                    if (!descriptorsByName.TryGetValue(dependencyName, out var dependency))
+                    FileDescriptor dependency;
+                    if (!descriptorsByName.TryGetValue(dependencyName, out dependency))
                     {
                         throw new ArgumentException($"Dependency missing: {dependencyName}");
                     }
@@ -344,6 +427,7 @@ namespace Google.Protobuf.Reflection
                 FileDescriptor descriptor = new FileDescriptor(
                     data, proto, dependencies, pool,
                     allowUnknownDependencies: false, generatedCodeInfo: null);
+                descriptor.CrossLink();
                 descriptors.Add(descriptor);
                 if (descriptorsByName.ContainsKey(descriptor.Name))
                 {

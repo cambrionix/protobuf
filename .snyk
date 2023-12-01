@@ -1,0 +1,20 @@
+# Ignore anything not related to C++
+ignore:
+  - benchmarks/**
+  - cmake/**
+  - conformance/**
+  - csharp/**
+  - docs/**
+  - editors/**
+  - examples/**
+  - java/**
+  - js/**
+  - kokoro/**
+  - m4/**
+  - objectivec/**
+  - php/**
+  - protoc-artifacts/**
+  - python/**
+  - ruby/**
+  - third_party/**
+  - util/**

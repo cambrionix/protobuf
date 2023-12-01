@@ -63,7 +63,7 @@ namespace Google.Protobuf.Reflection
         private readonly IList<FieldDescriptor> fieldsInDeclarationOrder;
         private readonly IList<FieldDescriptor> fieldsInNumberOrder;
         private readonly IDictionary<string, FieldDescriptor> jsonFieldMap;
-        
+
         internal MessageDescriptor(DescriptorProto proto, FileDescriptor file, MessageDescriptor parent, int typeIndex, GeneratedClrTypeInfo generatedCodeInfo)
             : base(file, file.ComputeFullName(parent, proto.Name), typeIndex)
         {
@@ -114,6 +114,21 @@ namespace Google.Protobuf.Reflection
         /// The brief name of the descriptor's target.
         /// </summary>
         public override string Name => Proto.Name;
+
+        internal override IReadOnlyList<DescriptorBase> GetNestedDescriptorListForField(int fieldNumber)
+        {
+            switch (fieldNumber)
+            {
+                case DescriptorProto.FieldFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) fieldsInDeclarationOrder;
+                case DescriptorProto.NestedTypeFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) NestedTypes;
+                case DescriptorProto.EnumTypeFieldNumber:
+                    return (IReadOnlyList<DescriptorBase>) EnumTypes;
+                default:
+                    return null;
+            }
+        }
 
         internal DescriptorProto Proto { get; }
 
