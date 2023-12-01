@@ -46,3 +46,35 @@ exclude:
     - src/google/protobuf/unknown_field_set_unittest.cc
     - src/google/protobuf/well_known_types_unittest.cc
     - src/google/protobuf/wire_format_unittest.cc
+    - src/google/protobuf/stubs/bytestream_unittest.cc
+    - src/google/protobuf/stubs/common_unittest.cc
+    - src/google/protobuf/stubs/int128_unittest.cc
+    - src/google/protobuf/stubs/stringpiece_unittest.cc
+    - src/google/protobuf/stubs/stringprintf_unittest.cc
+    - src/google/protobuf/stubs/structurally_valid_unittest.cc
+    - src/google/protobuf/stubs/strutil_unittest.cc
+    - src/google/protobuf/stubs/template_util_unittest.cc
+    - src/google/protobuf/compiler/command_line_interface_unittest.cc
+    - src/google/protobuf/compiler/importer_unittest.cc
+    - src/google/protobuf/compiler/parser_unittest.cc
+    - src/google/protobuf/compiler/zip_output_unittest.sh
+    - src/google/protobuf/compiler/cpp/cpp_bootstrap_unittest.cc
+    - src/google/protobuf/compiler/cpp/cpp_move_unittest.cc
+    - src/google/protobuf/compiler/cpp/cpp_plugin_unittest.cc
+    - src/google/protobuf/compiler/cpp/cpp_unittest.cc
+    - src/google/protobuf/compiler/cpp/cpp_unittest.h
+    - src/google/protobuf/compiler/cpp/cpp_unittest.inc
+    - src/google/protobuf/compiler/csharp/csharp_bootstrap_unittest.cc
+    - src/google/protobuf/compiler/csharp/csharp_generator_unittest.cc
+    - src/google/protobuf/compiler/java/java_doc_comment_unittest.cc
+    - src/google/protobuf/compiler/java/java_plugin_unittest.cc
+    - src/google/protobuf/compiler/objectivec/objectivec_helpers_unittest.cc
+    - src/google/protobuf/compiler/python/python_plugin_unittest.cc
+    - src/google/protobuf/compiler/ruby/ruby_generator_unittest.cc
+    - src/google/protobuf/io/coded_stream_unittest.cc
+    - src/google/protobuf/io/gzip_stream_unittest.sh
+    - src/google/protobuf/io/io_win32_unittest.cc
+    - src/google/protobuf/io/printer_unittest.cc
+    - src/google/protobuf/io/tokenizer_unittest.cc
+    - src/google/protobuf/io/zero_copy_stream_unittest.cc
+    - src/google/protobuf/util/message_differencer_unittest.cc
